@@ -7,7 +7,9 @@
 
 pragma solidity ^0.4.23;
 
-contract TokenSale {
+import "./KEYToken.sol";
+
+contract TokenSale is KEYToken {
 	using SafeMath for uint256;
 
 	address public owner;
@@ -64,6 +66,7 @@ contract TokenSale {
 	function switchTiers(uint8 _tier) public onlyOwner returns (bool success) {
 		require(_tier == 1 || _tier == 2);
 		require(_tier > currentTier);
+		currentTier = _tier;
 		return true;
 	}
 
