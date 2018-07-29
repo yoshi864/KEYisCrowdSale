@@ -21,7 +21,7 @@ contract TokenSale is KEYToken {
 
 	constructor() public {
 		owner = msg.sender;
-		// balances[this] = totalSupply
+		balances[this] = totalSupply;
 	}
 
 	modifier onlyOwner {
