@@ -35,9 +35,9 @@ contract TokenSale is KEYToken {
 		owner = msg.sender;
 		balances[this] = totalSupply;
 
-		investorAlloc = (totalSupply * investorsNumerator) / 100;
-		teamsAlloc = (totalSupply * teamNumerator) / 100;
-		costsAlloc = (totalSupply * costsNumerator) / 100;
+		investorAlloc = ((totalSupply * investorsNumerator) / 100) / 1 ether;
+		teamsAlloc = ((totalSupply * teamNumerator) / 100) / 1 ether;
+		costsAlloc = ((totalSupply * costsNumerator) / 100) / 1 ether;
 	}
 
 	modifier onlyOwner {
