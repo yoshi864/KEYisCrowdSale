@@ -1,5 +1,5 @@
-var KEYCrowdsale = artifacts.require("TokenSale");
+var TokenSale = artifacts.require("TokenSale");
 
 module.exports = function(deployer) {
-	deployer.deploy(KEYCrowdsale);
+	deployer.deploy(TokenSale);
 };

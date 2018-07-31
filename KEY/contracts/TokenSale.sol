@@ -1,7 +1,8 @@
 /* KEY Token Sale Smart Contract
  *
- * Supply = None (no token as of yet)
- * Pricing Tiers = 3
+ * Supply = 226 Million
+ * Pricing Stages = 4 (+30, +20, +10, +0 % Bonus)
+ * Distribution: 75 Sale
  * Sale duration = Manually set
  */
 
