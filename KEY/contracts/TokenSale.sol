@@ -120,6 +120,10 @@ contract TokenSale is KEYToken {
 		emit Transfer(this, owner, teamsAlloc);
 		emit Transfer(this, owner, costsAlloc);
 
+		// Return any unsold tokens to contract owner
+		uint256 remaining = investorAlloc.sub(tokensSold);
+		emit Transfer(this, owner, remaining);
+		
 		return true;
 	}
 }
