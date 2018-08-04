@@ -14,6 +14,11 @@ contract TokenSale is KEYToken {
 	using SafeMath for uint256;
 
 	address public owner;
+
+	address public teamsAddress;
+	address public costsAddress;
+
+
 	uint256 birth;
 	uint256[3] stages;
 
@@ -40,9 +45,14 @@ contract TokenSale is KEYToken {
 		balances[this] = totalSupply;
 		birth = now;
 
+		// Configure temporal stages of sale
 		stages[0] = birth + (4 weeks);
 		stages[1] = birth + (2 * (4 weeks));
 		stages[2] = birth + (3 * (4 weeks));
+
+		// Initially set team alloc / costs alloc addresses as owner
+		teamsAddress = owner;
+		costsAddress = owner;
 
 		investorAlloc = ((totalSupply * investorsNumerator) / 100) / 1 ether;
 		teamsAlloc = ((totalSupply * teamNumerator) / 100) / 1 ether;
@@ -68,6 +78,20 @@ contract TokenSale is KEYToken {
 	function setOwner(address _newOwnerAddress) public onlyOwner returns (bool success) {
 		require (_newOwnerAddress != address(0));
 		owner = _newOwnerAddress;
+		return true;
+	}
+
+	// Set a new address for costs allocation
+	function setCostsAddress(address _newCostsAddress) public onlyOwner returns (bool success) {
+		require (_newCostsAddress != address(0));
+		costsAddress = _newCostsAddress;
+		return true;
+	}
+
+	// Set a new address for teams allocation
+	function setTeamsAddress(address _newTeamsAddress) public onlyOwner returns (bool success) {
+		require (_newTeamsAddress != address(0));
+		teamsAddress = _newTeamsAddress;
 		return true;
 	}
 
@@ -151,10 +175,10 @@ contract TokenSale is KEYToken {
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);
 
-		emit Transfer(this, msg.sender, quantity);
-
 		tierToLimits[stage] = tierToLimits[stage].sub(quantity);
 		tokensSold[stage] = tokensSold[stage].add(quantity);
+
+		emit Transfer(this, msg.sender, quantity);
 
 		// TODO: Add a proper withdraw wallet. For now, transfer to owner.
 		owner.transfer(msg.value);
@@ -163,14 +187,13 @@ contract TokenSale is KEYToken {
 	// Disable sale (CANNOT BE REVERTED)
 	function disableSale() public onlyOwner returns (bool success) {
 		// Transfer investor allocation and costs allocation to wallets
-		// TODO: Set wallet function. For now, return to owner.
 		enableSale = false;
 
-		balances[owner] = balances[owner].add(teamsAlloc);
-		emit Transfer(this, owner, teamsAlloc);
+		balances[teamsAddress] = balances[teamsAddress].add(teamsAlloc);
+		emit Transfer(this, teamsAddress, teamsAlloc);
 
-		balances[owner] = balances[owner].add(costsAlloc);
-		emit Transfer(this, owner, costsAlloc);
+		balances[costsAddress] = balances[costsAddress].add(costsAlloc);
+		emit Transfer(this, costsAddress, costsAlloc);
 
 		// Return any unsold tokens to contract owner
 		uint256 remaining = investorAlloc.sub(tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3]);
