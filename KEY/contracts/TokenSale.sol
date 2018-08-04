@@ -19,7 +19,6 @@ contract TokenSale is KEYToken {
 
 	uint8 public currentTier = 0; // Current Pricing Tier.
 	bool public enableSale = true;
-	uint256 public tokensSold = 0;
 
 	// Token Allocation as percentages
 	uint8 public investorsNumerator = 75;
@@ -31,6 +30,7 @@ contract TokenSale is KEYToken {
 	uint256 public teamsAlloc;
 	uint256 public costsAlloc;
 
+	uint256[4] public tokensSold = [0,0,0,0];
 
 	mapping(uint8 => uint256) public tierToRates;
 	mapping(uint8 => uint256) public tierToLimits;
@@ -61,7 +61,7 @@ contract TokenSale is KEYToken {
 
 	// Get total amount tokens  purchased
 	function getTokensSold() public view returns (uint256 total) {
-		return tokensSold;
+		return tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3];
 	}
 
 	// Set a new owner
@@ -146,14 +146,15 @@ contract TokenSale is KEYToken {
 		}
 
 		// Check if there are enough tokens in current stage to sell
-		require(investorAlloc.sub(tokensSold) >= quantity);
+		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
 
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);
 
 		emit Transfer(this, msg.sender, quantity);
 
-		tokensSold = tokensSold.add(quantity);
+		tierToLimits[stage] = tierToLimits[stage].sub(quantity);
+		tokensSold[stage] = tokensSold[stage].add(quantity);
 
 		// TODO: Add a proper withdraw wallet. For now, transfer to owner.
 		owner.transfer(msg.value);
@@ -161,15 +162,19 @@ contract TokenSale is KEYToken {
 
 	// Disable sale (CANNOT BE REVERTED)
 	function disableSale() public onlyOwner returns (bool success) {
-		enableSale = false;
-
 		// Transfer investor allocation and costs allocation to wallets
 		// TODO: Set wallet function. For now, return to owner.
+		enableSale = false;
+
+		balances[owner] = balances[owner].add(teamsAlloc);
 		emit Transfer(this, owner, teamsAlloc);
+
+		balances[owner] = balances[owner].add(costsAlloc);
 		emit Transfer(this, owner, costsAlloc);
 
 		// Return any unsold tokens to contract owner
-		uint256 remaining = investorAlloc.sub(tokensSold);
+		uint256 remaining = investorAlloc.sub(tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3]);
+		balances[owner] = balances[owner].add(remaining);
 		emit Transfer(this, owner, remaining);
 
 		return true;
