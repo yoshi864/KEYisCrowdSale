@@ -54,6 +54,7 @@ contract TokenSale is KEYToken {
 		teamsAddress = owner;
 		costsAddress = owner;
 
+		// Calculate allocations
 		investorAlloc = ((totalSupply * investorsNumerator) / 100) / 1 ether;
 		teamsAlloc = ((totalSupply * teamNumerator) / 100) / 1 ether;
 		costsAlloc = ((totalSupply * costsNumerator) / 100) / 1 ether;
@@ -72,6 +73,14 @@ contract TokenSale is KEYToken {
 	// Get total amount tokens  purchased
 	function getTokensSold() public view returns (uint256 total) {
 		return tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3];
+	}
+
+	function getTierRate(uint8 tier) public view returns(uint256 rate) {
+		return tierToRates[tier];
+	}
+
+	function getTierLimit(uint8 tier) public view returns(uint256 limit) {
+		return tierToLimits[tier];
 	}
 
 	// Set a new owner
