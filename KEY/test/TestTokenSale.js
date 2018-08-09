@@ -1,5 +1,35 @@
 var TokenSale = artifacts.require("TokenSale");
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/*
+ * Function to change block time to test temporal stages
+ */
+const increaseTime = function(seconds) {
+  const id = Date.now()
+
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.sendAsync({
+      jsonrpc: '2.0',
+      method: 'evm_increaseTime',
+      params: [seconds],
+      id: id,
+    }, err1 => {
+      if (err1) return reject(err1)
+
+      web3.currentProvider.sendAsync({
+        jsonrpc: '2.0',
+        method: 'evm_mine',
+        id: id+1,
+      }, (err2, res) => {
+        return err2 ? reject(err2) : resolve(res)
+      })
+    })
+  })
+}
+
 contract('TokenSale', function(accounts) {
   it("Owner should be address that deployed contract", function() {
     return TokenSale.deployed().then(function(instance) {
@@ -20,6 +50,7 @@ contract('TokenSale', function(accounts) {
       sale = instance;
       return sale.setInitalTierRate(1300, { from: accounts[0] });
     }).then(function() {
+      increaseTime(7200);
       return sale.getTierRate.call(0);
     }).then(function(tierRate) {
       assert.equal(tierRate, 1300, "Rate is not 1300");
@@ -111,12 +142,61 @@ contract('TokenSale', function(accounts) {
 
   // TODO: Test setting costs and teams addresses
 
-  // TODO: Test buying tokens
-  // it("Should purchase 1300 tokens", function() {
-  //
-  // });
+  // Primitive token purchase function
+  it("Should purchase 1300 tokens", function() {
+    var sale;
+    return TokenSale.deployed().then(function(instance) {
+      sale = instance;
+      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
+    }).then(function() {
+      return sale.balanceOf.call(accounts[5]);
+    }).then(function(balance) {
+      assert.equal(balance, 1300, "1 eth should buy 1300 tokens");
+    });
+  });
 
   // TODO: Test timed tiers for purchasing
+  it("Should have diminishing returns on Tokens purchased", function() {
+    var sale;
+    var balanceInterval1;
+    var balanceInterval2;
+    var balanceInterval3;
+
+    return TokenSale.deployed().then(function(instance) {
+      sale = instance;
+      // 1st Timeshift + 4 weeks
+      increaseTime(2419200);
+      // Sleep for 20 ms so that evm Timeshift is surely complete
+      sleep(20);
+      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
+    }).then(function() {
+      return sale.balanceOf.call(accounts[5]);
+    }).then(function(_balance1) {
+      balanceInterval1 = _balance1;
+      // 2nd Timeshift + 4 weeks
+      increaseTime(2419200);
+      // Sleep for 20 ms so that evm Timeshift is surely complete
+      sleep(20);
+      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
+    }).then(function() {
+      return sale.balanceOf.call(accounts[5]);
+    }).then(function(_balance2) {
+      balanceInterval2 = _balance2;
+      // 3rd Timeshift + 4 weeks
+      increaseTime(2419200);
+      // Sleep for 20 ms so that evm Timeshift is surely complete
+      sleep(20);
+      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
+    }).then(function() {
+      return sale.balanceOf.call(accounts[5]);
+    }).then(function(_balance3) {
+      balanceInterval3 = _balance3;
+
+      assert.equal(balanceInterval1, 2500, "Should be a 20% Bonus in second period");
+      assert.equal(balanceInterval2, 3600, "Should be a 10% Bonus in third period");
+      assert.equal(balanceInterval3, 4600, "Should be a 0% Bonus in final period");
+    });
+  });
 
   // TODO: Test manually changed tiers
 
@@ -130,7 +210,7 @@ contract('TokenSale', function(accounts) {
 
 
   // Disable test function (NOTE: accounts[1] now owner, we have to send from accounts[1])
-  it("Should Disale Sale", function() {
+  it("Should disable Sale", function() {
     var sale;
 
     return TokenSale.deployed().then(function(instance) {
