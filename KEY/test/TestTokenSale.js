@@ -1,12 +1,5 @@
-var TokenSale = artifacts.require("TokenSale");
+const TokenSale = artifacts.require("TokenSale");
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/*
- * Function to change block time to test temporal stages
- */
 const increaseTime = function(seconds) {
   const id = Date.now()
 
@@ -30,202 +23,206 @@ const increaseTime = function(seconds) {
   })
 }
 
-contract('TokenSale', function(accounts) {
-  it("Owner should be address that deployed contract", function() {
-    return TokenSale.deployed().then(function(instance) {
-      return instance.owner();
-    }).then(function(owner) {
-      assert.equal(owner, accounts[0], "Owner is not the 1st address");
-    });
-  });
+contract('TokenSale', async (accounts) => {
+  let tokenSale
 
-  /*
-   * Test owner functions
-   */
+  // Reset contract for each test
+  beforeEach('Setup new contract for each test', async function () {
+    tokenSale = await TokenSale.new();
+  })
 
-  it("Should set initial tier rates", function() {
-    var sale;
+  it('Owner is address that deployed contract', async function () {
+    assert.equal(await tokenSale.owner(), accounts[0]);
+  })
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.setInitalTierRate(1300, { from: accounts[0] });
-    }).then(function() {
-      increaseTime(7200);
-      return sale.getTierRate.call(0);
-    }).then(function(tierRate) {
-      assert.equal(tierRate, 1300, "Rate is not 1300");
-    });
-  });
+  it('Set initial tier rates', async function () {
+    await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
 
-  it("Should set remaining tier rates", function() {
-    var sale;
-    var tier1Rate;
-    var tier2Rate;
-    var tier3Rate;
+    const tierRate = await tokenSale.getTierRate.call(0);
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.setTierRates(1200, 1100, 1000, { from: accounts[0] });
-    }).then(function() {
-      return sale.getTierRate.call(1);
-    }).then(function(_tier1Rate) {
-      tier1Rate = _tier1Rate;
-      return sale.getTierRate.call(2);
-    }).then(function(_tier2Rate) {
-      tier2Rate = _tier2Rate;
-      return sale.getTierRate.call(3);
-    }).then(function(_tier3Rate) {
-      tier3Rate = _tier3Rate;
-    }).then(function() {
-      assert.equal(tier1Rate, 1200, "Rate 1 wasn't correctly set");
-      assert.equal(tier2Rate, 1100, "Rate 2 wasn't correctly set");
-      assert.equal(tier3Rate, 1000, "Rate 3 wasn't correctly set");
-    });
-  });
+    assert.equal(tierRate, 1300, "Rate should be 1300");
+  })
 
-  it("Should set initial tier percentage", function() {
-    var sale;
-    var tierLimit;
+  it('Set remaining tier rates', async function () {
+    await tokenSale.setTierRates(1200, 1100, 1000, {from: accounts[0]});
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.setInitialTierLimit(10, { from: accounts[0] });
-    }).then(function() {
-      return sale.getTierLimit.call(0);
-    }).then(function(_tierLimit) {
-      tierLimit = _tierLimit;
-      return sale.investorAlloc();
-    }).then(function(investorAlloc) {
-      assert.equal(tierLimit, investorAlloc * 0.1, "Limit should be 10% Investor Alloc");
-    });
-  });
+    const tier1Rate = await tokenSale.getTierRate.call(1);
+    const tier2Rate = await tokenSale.getTierRate.call(2);
+    const tier3Rate = await tokenSale.getTierRate.call(3);
 
-  it("Should set remaining tier percentages", function() {
-    var sale;
-    var tier1Limit;
-    var tier2Limit;
-    var tier3Limit;
+    assert.equal(tier1Rate, 1200);
+    assert.equal(tier2Rate, 1100);
+    assert.equal(tier3Rate, 1000);
+  })
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.setTierLimits(15, 20, 40, { from: accounts[0] });
-    }).then(function() {
-      return sale.getTierLimit.call(1);
-    }).then(function(_tier1Limit) {
-      tier1Limit = _tier1Limit;
-      return sale.getTierLimit.call(2);
-    }).then(function(_tier2Limit) {
-      tier2Limit = _tier2Limit;
-      return sale.getTierLimit.call(3);
-    }).then(function(_tier3Limit) {
-      tier3Limit = _tier3Limit;
-      return sale.investorAlloc();
-    }).then(function(investorAlloc) {
-      assert.equal(tier1Limit, investorAlloc * 0.15, "Limit should be 15% Investor Alloc");
-      assert.equal(tier2Limit, investorAlloc * 0.2, "Limit should be 20% Investor Alloc");
-      assert.equal(tier3Limit, investorAlloc * 0.4, "Limit should be 40% Investor Alloc");
-    });
-  });
+  it('Set intial tier percentage', async function () {
+    await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
 
-  // Test changing Owner
-  it("Should change owner to accounts[1]", function() {
-    var sale;
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.setOwner(accounts[1], { from: accounts[0] });
-    }).then(function() {
-      return sale.owner();
-    }).then(function(owner) {
-      assert.equal(owner, accounts[1], "accounts[1] should now be the owner");
-    });
-  });
+    const tierLimit = await tokenSale.getTierLimit(0);
+    const investorAlloc = await tokenSale.investorAlloc();
 
-  // TODO: Test setting costs and teams addresses
+    assert.equal(tierLimit, investorAlloc * 0.1, "Limit should be 10% investor allocation");
+  })
 
-  // Primitive token purchase function
-  it("Should purchase 1300 tokens", function() {
-    var sale;
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
-    }).then(function() {
-      return sale.balanceOf.call(accounts[5]);
-    }).then(function(balance) {
-      assert.equal(balance, 1300, "1 eth should buy 1300 tokens");
-    });
-  });
+  it('Set remaining tier percentages', async function () {
+    await tokenSale.setTierLimits(15, 20, 40, {from: accounts[0]});
 
-  // TODO: Test timed tiers for purchasing
-  it("Should have diminishing returns on Tokens purchased", function() {
-    var sale;
-    var balanceInterval1;
-    var balanceInterval2;
-    var balanceInterval3;
+    const tier1Limit = await tokenSale.getTierLimit.call(1);
+    const tier2Limit = await tokenSale.getTierLimit.call(2);
+    const tier3Limit = await tokenSale.getTierLimit.call(3);
+    const investorAlloc = await tokenSale.investorAlloc();
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      // 1st Timeshift + 4 weeks
-      increaseTime(2419200);
-      // Sleep for 20 ms so that evm Timeshift is surely complete
-      sleep(20);
-      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
-    }).then(function() {
-      return sale.balanceOf.call(accounts[5]);
-    }).then(function(_balance1) {
-      balanceInterval1 = _balance1;
-      // 2nd Timeshift + 4 weeks
-      increaseTime(2419200);
-      // Sleep for 20 ms so that evm Timeshift is surely complete
-      sleep(20);
-      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
-    }).then(function() {
-      return sale.balanceOf.call(accounts[5]);
-    }).then(function(_balance2) {
-      balanceInterval2 = _balance2;
-      // 3rd Timeshift + 4 weeks
-      increaseTime(2419200);
-      // Sleep for 20 ms so that evm Timeshift is surely complete
-      sleep(20);
-      return sale.buyTokens({ value: web3.toWei('1', 'ether'), from: accounts[5]});
-    }).then(function() {
-      return sale.balanceOf.call(accounts[5]);
-    }).then(function(_balance3) {
-      balanceInterval3 = _balance3;
+    assert.equal(tier1Limit, investorAlloc * 0.15);
+    assert.equal(tier2Limit, investorAlloc * 0.2);
+    assert.equal(tier3Limit, investorAlloc * 0.4);
+  })
 
-      assert.equal(balanceInterval1, 2500, "Should be a 20% Bonus in second period");
-      assert.equal(balanceInterval2, 3600, "Should be a 10% Bonus in third period");
-      assert.equal(balanceInterval3, 4600, "Should be a 0% Bonus in final period");
-    });
-  });
+  it('Change owner to accounts[1]', async function () {
+    await tokenSale.setOwner(accounts[1], {from: accounts[0]});
+    assert.equal(await tokenSale.owner(), accounts[1]);
+  })
 
-  // TODO: Test manually changed tiers
+  it('Purchase 1300 Tokens with 1 Ether', async function () {
+    // Set the initial rate at 1300
+    await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
 
-  // TODO: Test limits for tiers
+    // Set initial limit at 10% investor allocation
+    await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
+
+    // Purchase tokens
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+
+    assert.equal(await tokenSale.balanceOf.call(accounts[5]), 1300, "1 ETH should buy 1300 tokens");
+  })
+
+  it('Purchase correct amount of tokens at each interval', async function () {
+    // Configure vars
+    await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
+    await tokenSale.setTierRates(1200, 1100, 1000, {from: accounts[0]});
+
+    await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
+    await tokenSale.setTierLimits(15, 20, 40, {from: accounts[0]});
+
+
+    // Increase the block time by 1 month each time and purchase
+    increaseTime(2419200);
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceInterval1 = await tokenSale.balanceOf.call(accounts[5]);
+
+    increaseTime(2419200);
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceInterval2 = await tokenSale.balanceOf.call(accounts[5]);
+
+    increaseTime(2419200);
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceInterval3 = await tokenSale.balanceOf.call(accounts[5]);
+
+    assert.equal(balanceInterval1, 1200);
+    assert.equal(balanceInterval2, 2300);
+    assert.equal(balanceInterval3, 3300);
+  })
+
+
+  // TODO: better checking
+  it('Disable Sale', async function () {
+    await tokenSale.disableSale({from: accounts[0]});
+    assert.equal(await tokenSale.enableSale(), false, "Sale should be disabled");
+  })
+
+  it('Purchase tokens with tiers manually changed (no months passed)', async function() {
+    // Configure vars
+    await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
+    await tokenSale.setTierRates(1200, 1100, 1000, {from: accounts[0]});
+
+    await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
+    await tokenSale.setTierLimits(15, 20, 40, {from: accounts[0]});
+
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceTier1 = await tokenSale.balanceOf.call(accounts[5]);
+
+    // Switch tiers to 1
+    await tokenSale.switchTiers(1, {from: accounts[0]});
+
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceTier2 = await tokenSale.balanceOf.call(accounts[5]);
+
+    // Switch tiers to 2
+    await tokenSale.switchTiers(2, {from: accounts[0]});
+
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceTier3 = await tokenSale.balanceOf.call(accounts[5]);
+
+    // Switch tiers to 3
+    await tokenSale.switchTiers(3, {from: accounts[0]});
+
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balanceTier4 = await tokenSale.balanceOf.call(accounts[5]);
+
+    assert.equal(balanceTier1, 1300, "Tier 0 should have purchased 1300 tokens");
+    assert.equal(balanceTier2, 2500, "Tier 1 should have purchased 1200 tokens");
+    assert.equal(balanceTier3, 3600, "Tier 2 should have purchased 1100 tokens");
+    assert.equal(balanceTier4, 4600, "Tier 3 should have purchased 1000 tokens");
+
+  })
+
+  // TODO: More manual conditions
+
+
+  // TODO: Test limits for tiers (fail once limit hit)
 
   // TODO: Test Eth sent on each purchase
 
   // TODO: Test sending unpurchased tokens to reserves
+  it('Unsold Tokens return to contract owner', async function () {
+    // Set different addresses for teams and costs location
+    await tokenSale.setTeamsAddress(accounts[1], {from: accounts[0]});
+    await tokenSale.setCostsAddress(accounts[2], {from: accounts[0]});
 
-  // TODO: Test sending allocations to designated addresses
+    // Configure vars
+    await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
+    await tokenSale.setTierRates(1200, 1100, 1000, {from: accounts[0]});
 
+    await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
+    await tokenSale.setTierLimits(15, 20, 40, {from: accounts[0]});
 
-  // Disable test function (NOTE: accounts[1] now owner, we have to send from accounts[1])
-  it("Should disable Sale", function() {
-    var sale;
+    // Should purchase 104000 tokens into two accounts
+    await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
+    await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[8]});
 
-    return TokenSale.deployed().then(function(instance) {
-      sale = instance;
-      return sale.disableSale({ from: accounts[1] });
-    }).then(function() {
-      return sale.enableSale();
-    }).then(function(enableSale) {
-      assert.equal(enableSale, false, "Sale should be disabled");
-    });
-  });
+    await tokenSale.switchTiers.call(1);
 
-  // Try and change the Tier Rates after disabled sale
-  // it("Should not be able to change rates after sale disabled", function() {
-  //   var sale;
-  //
-  // })
-});
+    // Should purchase 24000 tokens into one account
+    await tokenSale.buyTokens({value: web3.toWei('20', 'ether'), from: accounts[7]});
+
+    await tokenSale.switchTiers.call(2);
+
+    // Should purchase 22000 tokens into one account
+    await tokenSale.buyTokens({value: web3.toWei('20', 'ether'), from: accounts[8]});
+
+    await tokenSale.switchTiers.call(3);
+
+    // Should purchase 80000 tokens into one account
+    await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[9]});
+
+    await tokenSale.disableSale({from: accounts[0]});
+
+    const returned = await tokenSale.investorAlloc() - (104000 + 24000 + 22000 + 80000);
+
+    assert.equal(returned, await tokenSale.balanceOf(accounts[0]));
+
+  })
+
+  // Test sending allocations to designated addresses
+  it('Tokens send to team and costs addresses at end of sale', async function () {
+    await tokenSale.setTeamsAddress(accounts[1], {from: accounts[0]});
+    await tokenSale.setCostsAddress(accounts[2], {from: accounts[0]});
+
+    // end sale
+    await tokenSale.disableSale({from: accounts[0]});
+
+    assert.equal(await tokenSale.balanceOf.call(accounts[1]), 33900000);
+    assert.equal(await tokenSale.balanceOf.call(accounts[2]), 22600000);
+  })
+
+  // TODO: Full test case
+})
