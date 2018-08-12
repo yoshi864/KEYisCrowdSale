@@ -15,9 +15,9 @@ contract TokenSale is KEYToken {
 
 	address public owner;
 
-	address public teamsAddress;
-	address public costsAddress;
-
+	address public withdrawWallet;
+	address public teamsWallet;
+	address public costsWallet;
 
 	uint256 birth;
 	uint256[3] stages;
@@ -37,8 +37,9 @@ contract TokenSale is KEYToken {
 
 	uint256[4] public tokensSold = [0,0,0,0];
 
-	mapping(uint8 => uint256) public tierToRates;
-	mapping(uint8 => uint256) public tierToLimits;
+	// TODO: change to uint8 via mapping?
+	uint256[4] public tierToRates;
+	uint256[4] public tierToLimits;
 
 	constructor() public {
 		owner = msg.sender;
@@ -51,13 +52,18 @@ contract TokenSale is KEYToken {
 		stages[2] = birth + (3 * (4 weeks));
 
 		// Initially set team alloc / costs alloc addresses as owner
-		teamsAddress = owner;
-		costsAddress = owner;
+		withdrawWallet = owner;
+		teamsWallet = owner;
+		costsWallet = owner;
 
 		// Calculate allocations
 		investorAlloc = ((totalSupply * investorsNumerator) / 100) / 1 ether;
 		teamsAlloc = ((totalSupply * teamNumerator) / 100) / 1 ether;
 		costsAlloc = ((totalSupply * costsNumerator) / 100) / 1 ether;
+
+		// Specify rates and limits
+		tierToRates = [1300, 1200, 1100, 1000];
+		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 20) / 100, (investorAlloc * 30) / 100, (investorAlloc * 40) / 100];
 	}
 
 	modifier onlyOwner {
@@ -90,47 +96,24 @@ contract TokenSale is KEYToken {
 		return true;
 	}
 
+	// Set a new address for withdrawal
+	function setWithdrawWallet(address _newWithdrawWallet) public onlyOwner returns (bool success) {
+		require (_newWithdrawWallet != address(0));
+		withdrawWallet = _newWithdrawWallet;
+		return true;
+	}
+
 	// Set a new address for costs allocation
-	function setCostsAddress(address _newCostsAddress) public onlyOwner returns (bool success) {
-		require (_newCostsAddress != address(0));
-		costsAddress = _newCostsAddress;
+	function setCostsWallet(address _newCostsWallet) public onlyOwner returns (bool success) {
+		require (_newCostsWallet != address(0));
+		costsWallet = _newCostsWallet;
 		return true;
 	}
 
 	// Set a new address for teams allocation
-	function setTeamsAddress(address _newTeamsAddress) public onlyOwner returns (bool success) {
-		require (_newTeamsAddress != address(0));
-		teamsAddress = _newTeamsAddress;
-		return true;
-	}
-
-	// Set initial tier rate
-	function setInitalTierRate(uint256 _tierRate) public onlyOwner saleOngoing returns (bool success) {
-		require (currentTier == 0);
-		tierToRates[0] = _tierRate;
-		return true;
-	}
-
-	// Set tier rates
-	function setTierRates(uint256 _tier1Rate, uint256 _tier2Rate, uint256 _tier3Rate) public onlyOwner saleOngoing returns (bool success) {
-		tierToRates[1] = _tier1Rate;
-		tierToRates[2] = _tier2Rate;
-		tierToRates[3] = _tier3Rate;
-		return true;
-	}
-
-	// Set inital tier limit
-	function setInitialTierLimit(uint8 _tierLimitPercent) public onlyOwner saleOngoing returns (bool success) {
-		require(currentTier == 0);
-		tierToLimits[0] = (investorAlloc * _tierLimitPercent) / 100;
-		return true;
-	}
-
-	// Set tier limits
-	function setTierLimits(uint8 _tier1LimitPercent, uint8 _tier2LimitPercent, uint8 _tier3LimitPercent) public onlyOwner saleOngoing returns (bool success) {
-		tierToLimits[1] = (investorAlloc * _tier1LimitPercent) / 100;
-		tierToLimits[2] = (investorAlloc * _tier2LimitPercent) / 100;
-		tierToLimits[3] = (investorAlloc * _tier3LimitPercent) / 100;
+	function setTeamsWallet(address _newTeamsWallet) public onlyOwner returns (bool success) {
+		require (_newTeamsWallet != address(0));
+		teamsWallet = _newTeamsWallet;
 		return true;
 	}
 
@@ -188,9 +171,6 @@ contract TokenSale is KEYToken {
 		tokensSold[stage] = tokensSold[stage].add(quantity);
 
 		emit Transfer(this, msg.sender, quantity);
-
-		// TODO: Add a proper withdraw wallet. For now, transfer to owner.
-		owner.transfer(msg.value);
 	}
 
 	// Disable sale (CANNOT BE REVERTED)
@@ -198,17 +178,23 @@ contract TokenSale is KEYToken {
 		// Transfer investor allocation and costs allocation to wallets
 		enableSale = false;
 
-		balances[teamsAddress] = balances[teamsAddress].add(teamsAlloc);
-		emit Transfer(this, teamsAddress, teamsAlloc);
+		balances[teamsWallet] = balances[teamsWallet].add(teamsAlloc);
+		emit Transfer(this, teamsWallet, teamsAlloc);
 
-		balances[costsAddress] = balances[costsAddress].add(costsAlloc);
-		emit Transfer(this, costsAddress, costsAlloc);
+		balances[costsWallet] = balances[costsWallet].add(costsAlloc);
+		emit Transfer(this, costsWallet, costsAlloc);
 
 		// Return any unsold tokens to contract owner
 		uint256 remaining = investorAlloc.sub(tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3]);
 		balances[owner] = balances[owner].add(remaining);
 		emit Transfer(this, owner, remaining);
 
+		return true;
+	}
+
+	// Withdraw eth in contract
+	function withdrawFunds() public onlyOwner returns (bool success) {
+		withdrawWallet.transfer(address(this).balance);
 		return true;
 	}
 }
