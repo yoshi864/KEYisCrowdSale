@@ -118,12 +118,15 @@ contract('TokenSale', async (accounts) => {
   // TODO: REWRORK THIS test
   //  tier limits (fail once limit hit)
   it('Cannot purchase more than the allocated amount per tier', async function () {
-    // In this case, token limits are the same each tier
-    const tokenLimit = await tokenSale.getTierLimit.call(0);
-    console.log(tokenLimit);
 
-    const maxEthTiers = [(tokenLimit / 1300), (tokenLimit / 1200), (tokenLimit / 1100), (tokenLimit / 1000)];
-    console.log(maxEthTiers);
+    const tokenLimit = [];
+    for(i = 0; i < 4; i++) {
+      tokenLimit[i] = await tokenSale.getTierLimit.call(i);
+    }
+
+    const maxEthTiers = [(tokenLimit[0] / 1300), (tokenLimit[1] / 1200), (tokenLimit[2] / 1100), (tokenLimit[3] / 1000)];
+
+
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0] - 1, 'ether'), from: accounts[5]});
 
