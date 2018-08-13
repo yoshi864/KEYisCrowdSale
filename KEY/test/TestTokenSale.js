@@ -74,18 +74,12 @@ contract('TokenSale', async (accounts) => {
     assert.equal(balanceInterval3, 3300);
   })
 
-
-  it('Disable Sale', async function () {
-    await tokenSale.disableSale({from: accounts[0]});
-    assert.equal(await tokenSale.enableSale(), false, "Sale should be disabled");
-
-    // Token purchase should not be possible
-    await tryCatch(tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]}), errTypes.revert);
-  })
-
   it('Purchase tokens with tiers manually changed (no months passed)', async function() {
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
     const balanceTier1 = await tokenSale.balanceOf.call(accounts[5]);
+
+    // Turn on manual tiers
+    await tokenSale.enableManualTiers({from: accounts[0]});
 
     // Switch tiers to 1
     await tokenSale.switchTiers(1, {from: accounts[0]});
@@ -111,13 +105,32 @@ contract('TokenSale', async (accounts) => {
     assert.equal(balanceTier4, 4600, "Tier 3 should have purchased 1000 tokens");
 
   })
-
   // TODO: More manual conditions
 
+  it('Should not be able to change tiers without setting manualTiers', async function () {
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    const balance = await tokenSale.balanceOf.call(accounts[5]);
 
-  // TODO: REWRORK THIS test
+    // Expect a revert
+    await tryCatch(tokenSale.switchTiers(1, {from: accounts[0]}), errTypes.revert);
+
+    // Sanity check that the switch has not actually completed - token amount should be doubled
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+    assert.equal(await tokenSale.balanceOf.call(accounts[5]), 2 * balance);
+  })
+
+  it('Disable Sale', async function () {
+    await tokenSale.disableSale({from: accounts[0]});
+    assert.equal(await tokenSale.enableSale(), false, "Sale should be disabled");
+
+    // Token purchase should not be possible
+    await tryCatch(tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]}), errTypes.revert);
+  })
+
   //  tier limits (fail once limit hit)
   it('Cannot purchase more than the allocated amount per tier', async function () {
+
+    await tokenSale.enableManualTiers({from: accounts[0]});
 
     const tokenLimit = [];
     for(i = 0; i < 4; i++) {
@@ -156,11 +169,12 @@ contract('TokenSale', async (accounts) => {
 
     // Test for revert err
     await tryCatch(tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]}), errTypes.revert);
-
   })
 
   // Test sending unpurchased tokens to reserves
   it('Unsold Tokens return to contract owner', async function () {
+    await tokenSale.enableManualTiers({from: accounts[0]});
+
     // Set different addresses for teams and costs location
     await tokenSale.setTeamsWallet(accounts[1], {from: accounts[0]});
     await tokenSale.setCostsWallet(accounts[2], {from: accounts[0]});
@@ -208,6 +222,23 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
 
     await tryCatch(tokenSale.withdrawFunds({from: accounts[6]}), errTypes.revert);
+  })
+
+  // Test withdrawal function
+
+  it('Withdraw ETH received', async function() {
+    await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
+
+    // Set withdaw wallet
+    await tokenSale.setWithdrawWallet(accounts[9], {from: accounts[0]});
+
+    const balanceInitial = web3.eth.getBalance(accounts[9]);
+
+    await tokenSale.withdrawFunds({from: accounts[0]});
+
+    const balanceAfter = web3.eth.getBalance(accounts[9]);
+
+    assert.equal(web3.toWei('40', 'ether'), (balanceAfter - balanceInitial));
   })
 
   // Test withdrawal at arbitrary points // TODO: Rework this test

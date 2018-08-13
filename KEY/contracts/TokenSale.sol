@@ -1,9 +1,9 @@
 /* KEY Token Sale Smart Contract
  *
  * Supply = 226 Million
- * Pricing Stages = 4 (+30, +20, +10, +0 % Bonus) - set by function
+ * Pricing Stages = 4 (+30, +20, +10, +0 % Bonus) - set manually
  * Distribution: 75 Sale
- * Sale duration = Manually set, DateTime implementation pending
+ * Sale duration = 4 months, different tier each month. Or manual
  */
 
 pragma solidity ^0.4.23;
@@ -22,13 +22,10 @@ contract TokenSale is KEYToken {
 	uint256 birth;
 	uint256[3] stages;
 
-	uint8 public currentTier = 0; // Current Pricing Tier.
-	bool public enableSale = true;
+	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
+	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
 
-	// Token Allocation as percentages
-	uint8 public investorsNumerator = 75;
-	uint8 public teamNumerator = 15;
-	uint8 public costsNumerator = 10;
+	bool public enableSale = true;
 
 	// Allocation in number of tokens, mutable as supply is dependant on Token contract
 	uint256 public investorAlloc;
@@ -46,22 +43,36 @@ contract TokenSale is KEYToken {
 		balances[this] = totalSupply;
 		birth = now;
 
-		// Configure temporal stages of sale
+		/* Token Sale Stages
+		* Stage 1 -> Birth to 1 Month
+		* Stage 2 -> Birth + 1 Month to 2 Months
+		* Stage 3 -> Birth + 2 Months to 3 Months
+		* Stage 4 -> Birth + 3 Months to 4 Months
+		*/
 		stages[0] = birth + (4 weeks);
 		stages[1] = birth + (2 * (4 weeks));
 		stages[2] = birth + (3 * (4 weeks));
 
-		// Initially set team alloc / costs alloc addresses as owner
+		// Initially set team alloc / costs alloc wallet to owner address
 		withdrawWallet = owner;
 		teamsWallet = owner;
 		costsWallet = owner;
 
-		// Calculate allocations
-		investorAlloc = ((totalSupply * investorsNumerator) / 100) / 1 ether;
-		teamsAlloc = ((totalSupply * teamNumerator) / 100) / 1 ether;
-		costsAlloc = ((totalSupply * costsNumerator) / 100) / 1 ether;
+		/* Token allocation percentages:
+		* 75% - Investors
+		* 15% - Team
+		* 10% - Costs
+		*/
+		investorAlloc = ((totalSupply * 75) / 100) / 1 ether;
+		teamsAlloc = ((totalSupply * 15) / 100) / 1 ether;
+		costsAlloc = ((totalSupply * 10) / 100) / 1 ether;
 
-		// Specify rates and limits
+		/* Token Sale Rates and limits
+		* Stage 1; 1300 KEYis / Eth, 10% Investor supply allocated
+		* Stage 2; 1200 KEYis / Eth, 20% Investor supply allocated
+		* Stage 3; 1100 KEYis / Eth, 30% Investor Supply allocated
+		* Stage 4; 1000 KEYis / Eth, 40% Investor Supply allocated
+		*/
 		tierToRates = [1300, 1200, 1100, 1000];
 		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 20) / 100, (investorAlloc * 30) / 100, (investorAlloc * 40) / 100];
 	}
@@ -73,6 +84,11 @@ contract TokenSale is KEYToken {
 
 	modifier saleOngoing {
 		require(enableSale == true);
+		_;
+	}
+
+	modifier manualTiersSet {
+		require(manualTiers == true);
 		_;
 	}
 
@@ -117,10 +133,26 @@ contract TokenSale is KEYToken {
 		return true;
 	}
 
-	// Switch to the next tier
-	function switchTiers(uint8 _tier) public onlyOwner returns (bool success) {
+	// Switch to manually changing tiers. CANNOT BE REVERTED
+	function enableManualTiers() public onlyOwner returns (bool success) {
+		require (manualTiers == false);
+		manualTiers = true;
+		return true;
+	}
+
+	// Switch to the next tier. Only possible if manualTiersSet is true
+	function switchTiers(uint8 _tier) public onlyOwner manualTiersSet returns (bool success) {
 		require(_tier == 1 || _tier == 2 || _tier == 3);
 		require(_tier > currentTier);
+		// Safety: Cannot switch to tiers that should have happened in the past
+		// TODO: Find a more efficient way to do this.
+		if(_tier == 1) {
+			require(now < stages[0]);
+		} else if (_tier == 2) {
+			require(now < stages[1]);
+		} else if (_tier == 3) {
+			require(now < stages[2]);
+		}
 		currentTier = _tier;
 		return true;
 	}
@@ -135,8 +167,8 @@ contract TokenSale is KEYToken {
 		uint256 quantity = 0;
 		uint8 stage = 0;
 
-		// If tier is manually set (if all tokens in a stage are sold), then calculate rate accordingly
-		if (currentTier > 0) {
+		// If tier is manually set (enabled on discretion, if all tokens in a stage are sold), then calculate rate accordingly
+		if (manualTiers) {
 			quantity = (msg.value.mul(tierToRates[currentTier])).div(1 ether);
 			stage = currentTier;
 		}
