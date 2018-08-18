@@ -196,7 +196,7 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.switchTiers(3, {from: accounts[0]});
 
     // Should purchase 80000 tokens into one account
-    await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[9]});
+    await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[6]});
 
     await tokenSale.disableSale({from: accounts[0]});
 
@@ -221,57 +221,25 @@ contract('TokenSale', async (accounts) => {
   it('Only owner can withdraw', async function() {
     await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
 
-    await tryCatch(tokenSale.withdrawFunds({from: accounts[6]}), errTypes.revert);
+    await tryCatch(tokenSale.withdrawFunds(web3.toWei('40', 'ether'), {from: accounts[6]}), errTypes.revert);
   })
 
   // Test withdrawal function
 
   it('Withdraw ETH received', async function() {
-    await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
+    await tokenSale.buyTokens({value: web3.toWei('400', 'ether'), from: accounts[7]});
 
     // Set withdaw wallet
     await tokenSale.setWithdrawWallet(accounts[9], {from: accounts[0]});
 
     const balanceInitial = web3.eth.getBalance(accounts[9]);
 
-    await tokenSale.withdrawFunds({from: accounts[0]});
+    const receipt = await tokenSale.withdrawFunds.sendTransaction(web3.toWei('400', 'ether'), {from: accounts[0]});
 
     const balanceAfter = web3.eth.getBalance(accounts[9]);
 
-    assert.equal(web3.toWei('40', 'ether'), (balanceAfter - balanceInitial));
+    assert.equal(web3.toWei('400', 'ether'), web3.fromWei(balanceAfter - balanceInitial));
   })
-
-  // Test withdrawal at arbitrary points // TODO: Rework this test
-  // it('Withdraw Eth received at any point of the sale', async function() {
-  //   // Set withdrawWallet
-  //   await tokenSale.setWithdrawWallet(accounts[9], {from: accounts[0]});
-  //
-  //   await tokenSale.setInitalTierRate(1300, {from: accounts[0]});
-  //   await tokenSale.setTierRates(1200, 1100, 1000, {from: accounts[0]});
-  //
-  //   await tokenSale.setInitialTierLimit(10, {from: accounts[0]});
-  //   await tokenSale.setTierLimits(15, 20, 40, {from: accounts[0]});
-  //
-  //   const balanceWithdraw1 = web3.eth.getBalance(accounts[9]);
-  //
-  //   await tokenSale.buyTokens({value: web3.toWei('400', 'ether'), from: accounts[7]});
-  //
-  //   // Withdrawal 1
-  //   await tokenSale.withdrawFunds({from: accounts[0]});
-  //
-  //   // Change stage, purchase, then withdraw again
-  //   await tokenSale.switchTiers(1, {from: accounts[0]});
-  //
-  //   const balanceWithdraw2 = web3.eth.getBalance(accounts[9]);
-  //
-  //   await tokenSale.buyTokens({value: web3.toWei('400', 'ether'), from: accounts[7]});
-  //
-  //   // Withdrawal 2
-  //   await tokenSale.withdrawFunds({from: accounts[0]});
-  //
-  //   assert.equal(balanceWithdraw1 + 400, web3.eth.getBalance(accounts[9]));
-  //   assert.equal(balanceWithdraw2 + 400, web3.eth.getBalance(accounts[9]));
-  // })
 
   // TODO: Full test case
 })

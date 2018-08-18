@@ -225,8 +225,8 @@ contract TokenSale is KEYToken {
 	}
 
 	// Withdraw eth in contract
-	function withdrawFunds() public onlyOwner returns (bool success) {
-		withdrawWallet.transfer(address(this).balance);
+	function withdrawFunds(uint256 _amount) public onlyOwner returns (bool success) {
+		withdrawWallet.transfer(_amount);
 		return true;
 	}
 }
