@@ -22,6 +22,8 @@ contract TokenSale is KEYToken {
 	uint256 birth;
 	uint256[3] stages;
 
+	mapping(address => bool) whitelist;
+
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
 
@@ -31,8 +33,6 @@ contract TokenSale is KEYToken {
 	uint256 public investorAlloc;
 	uint256 public teamsAlloc;
 	uint256 public costsAlloc;
-
-	mapping(address => bool) whitelist;
 
 	uint256[4] public tokensSold = [0,0,0,0];
 
