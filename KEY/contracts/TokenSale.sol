@@ -32,6 +32,8 @@ contract TokenSale is KEYToken {
 	uint256 public teamsAlloc;
 	uint256 public costsAlloc;
 
+	mapping(address => bool) whitelist;
+
 	uint256[4] public tokensSold = [0,0,0,0];
 
 	// TODO: change to uint8 via mapping?
@@ -157,6 +159,18 @@ contract TokenSale is KEYToken {
 		return true;
 	}
 
+	// Add an address to the whitelist
+	function addToWhitelist(address _whitelistAddress) public onlyOwner returns (bool success) {
+		whitelist[_whitelistAddress] = true;
+		return true;
+	}
+
+	// Remove an address from the whitelist
+	function removeFromWhitelist(address _whitelistAddress) public onlyOwner returns (bool success) {
+		whitelist[_whitelistAddress] = false;
+		return true;
+	}
+
 	// Default function - Revert any direct ETH payments
 	function () public payable {
 		revert();
@@ -164,6 +178,9 @@ contract TokenSale is KEYToken {
 
 	// Token purchase function. Tokens can ONLY be purchase using this method
 	function buyTokens() public saleOngoing payable {
+		// Buyer must be on whitelist
+		require(whitelist[msg.sender] == true);
+
 		uint256 quantity = 0;
 		uint8 stage = 0;
 
@@ -217,7 +234,8 @@ contract TokenSale is KEYToken {
 		emit Transfer(this, costsWallet, costsAlloc);
 
 		// Return any unsold tokens to contract owner
-		uint256 remaining = investorAlloc.sub(tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3]);
+
+		uint256 remaining = investorAlloc.sub(tokensSold[0].add(tokensSold[1]).add(tokensSold[2]).add(tokensSold[3]));
 		balances[owner] = balances[owner].add(remaining);
 		emit Transfer(this, owner, remaining);
 

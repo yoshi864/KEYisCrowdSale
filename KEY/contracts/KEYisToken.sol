@@ -28,11 +28,11 @@ library SafeMath {
 contract KEYToken is EIP20Interface {
 	using SafeMath for uint256;
 
-	string public constant symbol = 'KEY';
-	string public constant name = 'KEY Token';
+	string public constant symbol = 'KEYis';
+	string public constant name = 'KEYis Token';
 	uint8 public constant decimals = 18;
 
-	string public constant version = "KEY 1.0";
+	string public constant version = "KEYis 1.0";
 
 	uint256 public constant totalSupply = 226000000 * 10**uint256(decimals);
 
