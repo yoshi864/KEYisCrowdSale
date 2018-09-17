@@ -39,6 +39,7 @@ contract TokenSale is KEYToken {
 	// TODO: change to uint8 via mapping?
 	uint256[4] public tierToRates;
 	uint256[4] public tierToLimits;
+	uint256[4] public tierToRemaining;
 
 	constructor() public {
 		owner = msg.sender;
@@ -77,6 +78,7 @@ contract TokenSale is KEYToken {
 		*/
 		tierToRates = [1300, 1200, 1100, 1000];
 		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 20) / 100, (investorAlloc * 30) / 100, (investorAlloc * 40) / 100];
+		tierToRemaining = tierToLimits
 	}
 
 	modifier onlyOwner {
@@ -211,12 +213,12 @@ contract TokenSale is KEYToken {
 		}
 
 		// Check if there are enough tokens in current stage to sell
-		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
+		require(tierToRemaining[stage].sub(tokensSold[stage]) >= quantity);
 
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);
 
-		tierToLimits[stage] = tierToLimits[stage].sub(quantity);
+		tierToRemaining[stage] = tierToRemaining[stage].sub(quantity);
 		tokensSold[stage] = tokensSold[stage].add(quantity);
 
 		emit Transfer(this, msg.sender, quantity);
