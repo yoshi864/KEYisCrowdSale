@@ -25,7 +25,7 @@ library SafeMath {
     }
 }
 
-contract KEYToken is EIP20Interface {
+contract KEYisToken is EIP20Interface {
 	using SafeMath for uint256;
 
 	string public constant symbol = 'KEYis';
@@ -34,7 +34,7 @@ contract KEYToken is EIP20Interface {
 
 	string public constant version = "KEYis 1.0";
 
-	uint256 public constant totalSupply = 226000000 * 10**uint256(decimals);
+	uint256 public constant totalSupply = 223000000 * 10**uint256(decimals);
 
 	uint256 private constant MAX_UINT256 = 2**256 - 1;
 

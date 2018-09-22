@@ -8,9 +8,9 @@
 
 pragma solidity ^0.4.23;
 
-import "./KEYToken.sol";
+import "./KEYisToken.sol";
 
-contract TokenSale is KEYToken {
+contract TokenSale is KEYisToken {
 	using SafeMath for uint256;
 
 	address public owner;
@@ -40,7 +40,6 @@ contract TokenSale is KEYToken {
 	// TODO: change to uint8 via mapping?
 	uint256[3] public tierToRates;
 	uint256[3] public tierToLimits;
-	uint256[3] public tierToRemaining;
 	uint256 public standardRate;
 
 	constructor() public {
@@ -67,10 +66,9 @@ contract TokenSale is KEYToken {
 		* Stage 2; 1200 KEYis / Eth, 20% Investor supply allocated
 		* Stage 3; 1100 KEYis / Eth, 30% Investor Supply allocated
 		*/
-		tierToRates = [1300, 1200, 1100];
-		standardRate = 1000;
+		tierToRates = [3250, 3000, 2750];
+		standardRate = 2500;
 		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 35) / 100, (investorAlloc * 55) / 100];
-		tierToRemaining = tierToLimits
 	}
 
 	modifier onlyOwner {
@@ -88,9 +86,14 @@ contract TokenSale is KEYToken {
 		_;
 	}
 
+	// Get whitelist status
+	function getWhitelistStatus(address _whitelistAddress) public view returns(bool whitelisted) {
+		return whitelist[_whitelistAddress];
+	}
+
 	// Get total amount tokens  purchased
 	function getTokensSold() public view returns (uint256 total) {
-		return tokensSold[0] + tokensSold[1] + tokensSold[2] + tokensSold[3];
+		return tokensSold[0] + tokensSold[1] + tokensSold[2];
 	}
 
 	function getTierRate(uint8 tier) public view returns(uint256 rate) {
@@ -99,6 +102,10 @@ contract TokenSale is KEYToken {
 
 	function getTierLimit(uint8 tier) public view returns(uint256 limit) {
 		return tierToLimits[tier];
+	}
+
+	function getBonusOwings(address _address) public onlyOwner view returns(uint256 owings) {
+		return bonusOwings[_address];
 	}
 
 	// Set a new owner
@@ -138,7 +145,7 @@ contract TokenSale is KEYToken {
 
 	// Switch to the next tier. Only possible if manualTiersSet is true
 	function switchTiers(uint8 _tier) public onlyOwner manualTiersSet returns (bool success) {
-		require(_tier == 1 || _tier == 2 || _tier == 3);
+		require(_tier == 1 || _tier == 2);
 		require(_tier > currentTier);
 
 		currentTier = _tier;
@@ -167,6 +174,9 @@ contract TokenSale is KEYToken {
 		// Buyer must be on whitelist
 		require(whitelist[msg.sender] == true);
 
+		// Amount must be greater than 0.5
+		require(msg.value >= 0.5 ether);
+
 		uint256 quantity = 0;
 		uint8 stage = 0;
 
@@ -177,11 +187,11 @@ contract TokenSale is KEYToken {
 		}
 
 		// Otherwise, we need to check if there are enough tokens remaining in the stage.
-		else if (tierToRemaining[0] > 0) {
+		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
 			quantity = (msg.value.mul(tierToRates[0])).div(1 ether);
 		}
 		// Stage 2; 20% Bonus
-		else if (tierToRemaining[1] > 0) {
+		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
 			quantity = (msg.value.mul(tierToRates[1])).div(1 ether);
 			stage = 1;
 		}
@@ -192,18 +202,17 @@ contract TokenSale is KEYToken {
 		}
 
 		// Check if there are enough tokens in current stage to sell
-		require(tierToRemaining[stage].sub(tokensSold[stage]) >= quantity);
+		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
 
 		// Calculate amount to be sent immediately
-		standardTransf = msg.value.mul(standardRate)
+		uint256 standardTransf = msg.value.mul(standardRate).div(1 ether);
 
 		// Store owings for any bonus amount that will be gradually sent
-		bonusOwings[msg.sender] = quantity.sub(standardTransf);
+		bonusOwings[msg.sender] = bonusOwings[msg.sender] + quantity.sub(standardTransf);
 
 		balances[msg.sender] = balances[msg.sender].add(standardTransf);
 		balances[address(this)] = balances[address(this)].sub(msg.value.mul(standardRate));
 
-		tierToRemaining[stage] = tierToRemaining[stage].sub(quantity);
 		tokensSold[stage] = tokensSold[stage].add(quantity);
 
 		emit Transfer(this, msg.sender, standardTransf);
