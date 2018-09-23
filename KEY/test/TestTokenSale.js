@@ -113,25 +113,29 @@ contract('TokenSale', async (accounts) => {
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0], 'ether'), from: accounts[5]});
 
-    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}))
+    //console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
+    console.log(Math.floor(maxEthTiers[0] * 2500));
 
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), maxEthTiers[0] * 0.3);
+    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750));
+
+    console.log(await tokenSale.getTokensSold());
 
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[1], 'ether'), from: accounts[5]});
 
-    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}))
-
+    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
+    console.log(Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500));
     // We should now be in 20% stage
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), (maxEthTiers[0] * 0.3) + (maxEthTiers[1] * 0.2));
+    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500));
 
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[2], 'ether'), from: accounts[5]});
 
-    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}))
+    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
+    console.log(Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500) + (maxEthTiers[2] * 250));
 
     // Should now be in 10% stage
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), (maxEthTiers[0] * 0.3) + (maxEthTiers[1] * 0.2) + (maxEthTiers[2] * 0.1));
+    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500) + (maxEthTiers[2] * 250));
     })
 
   // Test sending unpurchased tokens to reserves
