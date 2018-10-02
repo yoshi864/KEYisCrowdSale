@@ -178,7 +178,9 @@ contract TokenSale is KEYisToken {
 		require(msg.value >= 0.5 ether);
 
 		uint256 quantity = 0;
+		uint256 bonusThisPurchase = 0;
 		uint8 stage = 0;
+
 
 		// If tier is manually set (enabled on discretion, if all tokens in a stage are sold), then calculate rate accordingly
 		if (manualTiers) {
@@ -189,15 +191,27 @@ contract TokenSale is KEYisToken {
 		// Otherwise, we need to check if there are enough tokens remaining in the stage.
 		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
 			quantity = (msg.value.mul(tierToRates[0])).div(1 ether);
+			// Logic for case where purchase amount is greater than remaining amount
+			/* if (quantity > tierToLimits[0].sub(tokensSold[0])) {
+
+			} */
 		}
 		// Stage 2; 20% Bonus
 		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
 			quantity = (msg.value.mul(tierToRates[1])).div(1 ether);
+			// TODO: Calculate excess tokens
+			/* if (quantity > tierToLimits[1].sub(tokensSold[1])) {
+
+			} */
 			stage = 1;
 		}
 		// Stage 3; 10% Bonus
 		else {
 			quantity = (msg.value.mul(tierToRates[2])).div(1 ether);
+			// TODO: Calculate excess tokens
+			/* if (quantity > tierToLimits[2].sub(tokensSold[2])) {
+
+			} */
 			stage = 2;
 		}
 
