@@ -34,7 +34,7 @@ contract KEYisToken is EIP20Interface {
 
 	string public constant version = "KEYis 1.0";
 
-	uint256 public constant totalSupply = 223000000 * 10**uint256(decimals);
+	uint256 public constant totalSupply = 200000000 * 10**uint256(decimals);
 
 	uint256 private constant MAX_UINT256 = 2**256 - 1;
 

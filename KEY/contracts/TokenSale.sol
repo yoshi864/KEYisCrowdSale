@@ -20,10 +20,11 @@ contract TokenSale is KEYisToken {
 	address public costsWallet;
 
 	uint256 birth;
+	uint256 end;
+	uint256[2] stageSwitchTimeStamps;
 	uint256[3] stages;
 
 	mapping(address => bool) whitelist;
-	mapping(address => uint256) bonusOwings;
 
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
@@ -35,7 +36,7 @@ contract TokenSale is KEYisToken {
 	uint256 public teamsAlloc;
 	uint256 public costsAlloc;
 
-	uint256[4] public tokensSold = [0,0,0];
+	uint256[3] public tokensSold = [0,0,0];
 
 	// TODO: change to uint8 via mapping?
 	uint256[3] public tierToRates;
@@ -52,23 +53,19 @@ contract TokenSale is KEYisToken {
 		teamsWallet = owner;
 		costsWallet = owner;
 
-		/* Token allocation percentages:
-		* 75% - Investors
-		* 15% - Team
-		* 10% - Costs
+		/* Token allocation numbers:
+		* 150000000 - Investors
+		* 30000000	- Team
+		* 20000000	- Costs
 		*/
+
 		investorAlloc = ((totalSupply * 75) / 100) / 1 ether;
 		teamsAlloc = ((totalSupply * 15) / 100) / 1 ether;
 		costsAlloc = ((totalSupply * 10) / 100) / 1 ether;
 
-		/* Token Sale Rates and limits
-		* Stage 1; 1300 KEYis / Eth, 10% Investor supply allocated
-		* Stage 2; 1200 KEYis / Eth, 20% Investor supply allocated
-		* Stage 3; 1100 KEYis / Eth, 30% Investor Supply allocated
-		*/
-		tierToRates = [3250, 3000, 2750];
 		standardRate = 2500;
-		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 35) / 100, (investorAlloc * 55) / 100];
+
+		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 60) / 100];
 	}
 
 	modifier onlyOwner {
@@ -96,16 +93,8 @@ contract TokenSale is KEYisToken {
 		return tokensSold[0] + tokensSold[1] + tokensSold[2];
 	}
 
-	function getTierRate(uint8 tier) public view returns(uint256 rate) {
-		return tierToRates[tier];
-	}
-
 	function getTierLimit(uint8 tier) public view returns(uint256 limit) {
 		return tierToLimits[tier];
-	}
-
-	function getBonusOwings(address _address) public onlyOwner view returns(uint256 owings) {
-		return bonusOwings[_address];
 	}
 
 	// Set a new owner
@@ -174,62 +163,93 @@ contract TokenSale is KEYisToken {
 		// Buyer must be on whitelist
 		require(whitelist[msg.sender] == true);
 
-		// Amount must be greater than 0.5
-		require(msg.value >= 0.5 ether);
-
 		uint256 quantity = 0;
-		uint256 bonusThisPurchase = 0;
 		uint8 stage = 0;
-
+		uint256 remaining = 0;
+		uint256 leftoverQuantity = 0;
 
 		// If tier is manually set (enabled on discretion, if all tokens in a stage are sold), then calculate rate accordingly
 		if (manualTiers) {
-			quantity = (msg.value.mul(tierToRates[currentTier])).div(1 ether);
+			quantity = (msg.value.mul(standardRate)).div(1 ether);
 			stage = currentTier;
 		}
 
 		// Otherwise, we need to check if there are enough tokens remaining in the stage.
 		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
-			quantity = (msg.value.mul(tierToRates[0])).div(1 ether);
-			// Logic for case where purchase amount is greater than remaining amount
-			/* if (quantity > tierToLimits[0].sub(tokensSold[0])) {
+			quantity = (msg.value.mul(standardRate)).div(1 ether);
 
-			} */
+			// Logic for case where purchase amount is greater than remaining amount (tiers must switch)
+			if (quantity > tierToLimits[0].sub(tokensSold[0])) {
+				// TODO: Requirements for safety?
+
+				remaining = tierToLimits[0].sub(tokensSold[0]);
+				leftoverQuantity = quantity.sub(remaining);
+
+				// Add remaining tokens to account
+				balances[msg.sender] = balances[msg.sender].add(remaining);
+				balances[address(this)] = balances[address(this)].sub(remaining);
+
+				tokensSold[0] = tokensSold[0].add(remaining);
+
+				// Mark timestamp
+				stageSwitchTimeStamps[0] = now;
+
+				// Purchase from next tier
+				balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
+				balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
+
+				tokensSold[1] = tokensSold[1].add(leftoverQuantity);
+
+				emit Transfer(this, msg.sender, quantity);
+				return;
+			}
 		}
-		// Stage 2; 20% Bonus
+		// Stage 2;
 		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
-			quantity = (msg.value.mul(tierToRates[1])).div(1 ether);
-			// TODO: Calculate excess tokens
-			/* if (quantity > tierToLimits[1].sub(tokensSold[1])) {
+			quantity = (msg.value.mul(standardRate)).div(1 ether);
 
-			} */
+			if (quantity > tierToLimits[1].sub(tokensSold[1])) {
+				remaining = tierToLimits[1].sub(tokensSold[1]);
+				leftoverQuantity = quantity.sub(remaining);
+
+				// Add remaining tokens to account
+				balances[msg.sender] = balances[msg.sender].add(remaining);
+				balances[address(this)] = balances[address(this)].sub(remaining);
+
+				tokensSold[1] = tokensSold[1].add(remaining);
+
+				// Mark timestamp
+				stageSwitchTimeStamps[1] = now;
+
+				// Purchase from next tier
+				balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
+				balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
+
+				tokensSold[2] = tokensSold[2].add(leftoverQuantity);
+
+				emit Transfer(this, msg.sender, quantity);
+				return;
+			}
 			stage = 1;
 		}
-		// Stage 3; 10% Bonus
+		// Stage 3;
 		else {
-			quantity = (msg.value.mul(tierToRates[2])).div(1 ether);
-			// TODO: Calculate excess tokens
-			/* if (quantity > tierToLimits[2].sub(tokensSold[2])) {
-
-			} */
+			quantity = (msg.value.mul(standardRate)).div(1 ether);
 			stage = 2;
 		}
+
+		// Amount must be greater than 0.5
+		require(msg.value >= 0.5 ether);
 
 		// Check if there are enough tokens in current stage to sell
 		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
 
-		// Calculate amount to be sent immediately
-		uint256 standardTransf = msg.value.mul(standardRate).div(1 ether);
-
-		// Store owings for any bonus amount that will be gradually sent
-		bonusOwings[msg.sender] = bonusOwings[msg.sender] + quantity.sub(standardTransf);
-
-		balances[msg.sender] = balances[msg.sender].add(standardTransf);
-		balances[address(this)] = balances[address(this)].sub(msg.value.mul(standardRate));
+		balances[msg.sender] = balances[msg.sender].add(quantity);
+		balances[address(this)] = balances[address(this)].sub(quantity);
 
 		tokensSold[stage] = tokensSold[stage].add(quantity);
 
-		emit Transfer(this, msg.sender, standardTransf);
+		emit Transfer(this, msg.sender, quantity);
 	}
 
 	// Disable sale (CANNOT BE REVERTED)
@@ -245,9 +265,11 @@ contract TokenSale is KEYisToken {
 
 		// Return any unsold tokens to contract owner
 
-		uint256 remaining = investorAlloc.sub(tokensSold[0].add(tokensSold[1]).add(tokensSold[2]).add(tokensSold[3]));
+		uint256 remaining = investorAlloc.sub(tokensSold[0].add(tokensSold[1]).add(tokensSold[2]));
 		balances[owner] = balances[owner].add(remaining);
 		emit Transfer(this, owner, remaining);
+
+		end = now;
 
 		return true;
 	}
