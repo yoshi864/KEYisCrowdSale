@@ -139,6 +139,7 @@ contract TokenSale is KEYisToken {
 		require(_tier == 1 || _tier == 2);
 		require(_tier > currentTier);
 
+		stageSwitchTimeStamps[_tier - 1] = now;
 		currentTier = _tier;
 		return true;
 	}
