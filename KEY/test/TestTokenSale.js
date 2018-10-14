@@ -112,6 +112,31 @@ contract('TokenSale', async (accounts) => {
     assert.equal(await tokenSale.getTokensSold(), 150000000);
     })
 
+  //  Timestamps are correct on overflow condition
+  // it('Tiers switch automatically when limits are reached', async function () {
+  //   await tokenSale.addToWhitelist(accounts[5], {from: accounts[0]});
+  //
+  //   const tokenLimit = [];
+  //   for(i = 0; i < 3; i++) {
+  //     tokenLimit[i] = await tokenSale.getTierLimit.call(i);
+  //   }
+  //
+  //   const maxEthTiers = [(tokenLimit[0] / 2500), (tokenLimit[1] / 2500), (tokenLimit[2] / 2500)];
+  //
+  //   // Purchase up to the limit on 1st tier, then try to purchase more
+  //   await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0], 'ether'), from: accounts[5]});
+  //
+  //   // Purchase up to the limit on 2nd tier, then try to purchase more
+  //   await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[1], 'ether'), from: accounts[5]});
+  //
+  //   // Purchase up to the limit on last tier
+  //   await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[2], 'ether'), from: accounts[5]});
+  //
+  //   // Should now have purchased all tokens
+  //   assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000);
+  //   assert.equal(await tokenSale.getTokensSold(), 150000000);
+  //   })
+
   // Test sending unpurchased tokens to reserves
   it('Unsold Tokens return to contract owner', async function () {
     await tokenSale.addToWhitelist(accounts[6], {from: accounts[0]});

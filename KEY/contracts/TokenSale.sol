@@ -89,8 +89,14 @@ contract TokenSale is KEYisToken {
 		return tokensSold[0] + tokensSold[1] + tokensSold[2];
 	}
 
-	function getTierLimit(uint8 tier) public view returns(uint256 limit) {
-		return tierToLimits[tier];
+	// Get limits for each tier
+	function getTierLimit(uint8 _tier) public view returns(uint256 limit) {
+		return tierToLimits[_tier];
+	}
+
+	// Get timestamp of tier switch
+	function getStageSwitchTimestamps(uint8 _stage) public view returns(uint256 timestamp) {
+		return stageSwitchTimeStamps[_stage];
 	}
 
 	// Set a new owner
@@ -241,9 +247,9 @@ contract TokenSale is KEYisToken {
 		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
 
 		// If the amount to purchase equals the amount remaining, we switch to next tier
-		// if (tierToLimits[stage].sub(tokensSold[stage]) == quantity) {
-		// 	stageSwitchTimeStamps[stage] = now;
-		// }
+		if (tierToLimits[stage].sub(tokensSold[stage]) == quantity && stage != 2) {
+			stageSwitchTimeStamps[stage] = now;
+		}
 
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);
