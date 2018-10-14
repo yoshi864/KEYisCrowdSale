@@ -1,9 +1,5 @@
-/* KEY Token Sale Smart Contract
- *
- * Supply = 226 Million
- * Pricing Stages = 4 (+30, +20, +10, +0 % Bonus) - set manually
- * Distribution: 75 Sale
- * Sale duration = 4 months, different tier each month. Or manual
+/*
+ * KEY Token Sale Smart Contract
  */
 
 pragma solidity ^0.4.23;
@@ -243,6 +239,11 @@ contract TokenSale is KEYisToken {
 
 		// Check if there are enough tokens in current stage to sell
 		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
+
+		// If the amount to purchase equals the amount remaining, we switch to next tier
+		// if (tierToLimits[stage].sub(tokensSold[stage]) == quantity) {
+		// 	stageSwitchTimeStamps[stage] = now;
+		// }
 
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);

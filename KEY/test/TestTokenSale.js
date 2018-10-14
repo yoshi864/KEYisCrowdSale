@@ -1,4 +1,5 @@
 const TokenSale = artifacts.require("TokenSale");
+const StandardRate = 2500;
 
 contract('TokenSale', async (accounts) => {
   let tryCatch = require("./exceptions.js").tryCatch;
@@ -44,16 +45,7 @@ contract('TokenSale', async (accounts) => {
     // Purchase tokens
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
 
-    assert.equal(await tokenSale.balanceOf.call(accounts[5]), 2500, "1 ETH should buy 2500 tokens");
-  })
-
-  it('Bonus tokens are owed after purchase', async function () {
-    await tokenSale.addToWhitelist(accounts[5], {from: accounts[0]});
-
-    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
-
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), 750);
-
+    assert.equal(await tokenSale.balanceOf.call(accounts[5]), StandardRate, "1 ETH should buy 2500 tokens");
   })
 
   it('Purchase tokens with tiers manually changed, and have correct bonuses', async function() {
@@ -77,9 +69,9 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
     const balanceTier3 = await tokenSale.balanceOf.call(accounts[5]);
 
-    assert.equal(balanceTier1, 2500, "Tier 0 should have purchased 2500 tokens");
-    assert.equal(balanceTier2, 5000, "Tier 1 should have purchased 2500 tokens");
-    assert.equal(balanceTier3, 7500, "Tier 2 should have purchased 2500 tokens");
+    assert.equal(balanceTier1, StandardRate, "Tier 0 should have purchased 2500 tokens");
+    assert.equal(balanceTier2, StandardRate * 2, "Tier 1 should have purchased 2500 tokens");
+    assert.equal(balanceTier3, StandardRate * 3, "Tier 2 should have purchased 2500 tokens");
 
     assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), 1500)
 
@@ -107,35 +99,20 @@ contract('TokenSale', async (accounts) => {
       tokenLimit[i] = await tokenSale.getTierLimit.call(i);
     }
 
-    const maxEthTiers = [(tokenLimit[0] / 3250), (tokenLimit[1] / 3000), (tokenLimit[2] / 2750)];
-
+    const maxEthTiers = [(tokenLimit[0] / 2500), (tokenLimit[1] / 2500), (tokenLimit[2] / 2500)];
 
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0], 'ether'), from: accounts[5]});
 
-    //console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
-    console.log(Math.floor(maxEthTiers[0] * 2500));
-
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750));
-
-    console.log(await tokenSale.getTokensSold());
-
-    // Purchase up to the limit on 1st tier, then try to purchase more
+    // Purchase up to the limit on 2nd tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[1], 'ether'), from: accounts[5]});
 
-    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
-    console.log(Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500));
-    // We should now be in 20% stage
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500));
-
-    // Purchase up to the limit on 1st tier, then try to purchase more
+    // Purchase up to the limit on last tier
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[2], 'ether'), from: accounts[5]});
 
-    console.log(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}));
-    console.log(Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500) + (maxEthTiers[2] * 250));
-
-    // Should now be in 10% stage
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), Math.floor(maxEthTiers[0] * 750) + (maxEthTiers[1] * 500) + (maxEthTiers[2] * 250));
+    // Should now have purchased all tokens
+    assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000);
+    assert.equal(await tokenSale.getTokensSold(), 150000000);
     })
 
   // Test sending unpurchased tokens to reserves
@@ -170,6 +147,8 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[6]});
 
     await tokenSale.disableSale({from: accounts[0]});
+
+    console.log(await tokenSale.balanceOf(accounts[0]));
 
     const returned = await tokenSale.investorAlloc() - (200000 + 50000 + 50000 + 200000);
 
