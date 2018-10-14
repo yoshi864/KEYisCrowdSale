@@ -48,7 +48,7 @@ contract('TokenSale', async (accounts) => {
     assert.equal(await tokenSale.balanceOf.call(accounts[5]), StandardRate, "1 ETH should buy 2500 tokens");
   })
 
-  it('Purchase tokens with tiers manually changed, and have correct bonuses', async function() {
+  it('Purchase tokens with tiers manually changed', async function() {
     await tokenSale.addToWhitelist(accounts[5], {from: accounts[0]});
 
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
@@ -72,9 +72,6 @@ contract('TokenSale', async (accounts) => {
     assert.equal(balanceTier1, StandardRate, "Tier 0 should have purchased 2500 tokens");
     assert.equal(balanceTier2, StandardRate * 2, "Tier 1 should have purchased 2500 tokens");
     assert.equal(balanceTier3, StandardRate * 3, "Tier 2 should have purchased 2500 tokens");
-
-    assert.equal(await tokenSale.getBonusOwings(accounts[5], {from: accounts[0]}), 1500)
-
   })
 
   it('Should not be able to change tiers without setting manualTiers', async function () {
@@ -121,38 +118,31 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.addToWhitelist(accounts[7], {from: accounts[0]});
     await tokenSale.addToWhitelist(accounts[8], {from: accounts[0]});
 
-    await tokenSale.enableManualTiers({from: accounts[0]});
-
     // Set different addresses for teams and costs location
     await tokenSale.setTeamsWallet(accounts[1], {from: accounts[0]});
     await tokenSale.setCostsWallet(accounts[2], {from: accounts[0]});
+    await tokenSale.setWithdrawWallet(accounts[3], {from: accounts[0]});
 
     // Should purchase 200000 tokens into two accounts
     await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
     await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[8]});
 
-    await tokenSale.switchTiers(1, {from: accounts[0]});
 
     // Should purchase 50000 tokens into one account
     await tokenSale.buyTokens({value: web3.toWei('20', 'ether'), from: accounts[7]});
 
-    await tokenSale.switchTiers(2, {from: accounts[0]});
 
     // Should purchase 50000 tokens into one account
     await tokenSale.buyTokens({value: web3.toWei('20', 'ether'), from: accounts[8]});
-
-    await tokenSale.switchTiers(3, {from: accounts[0]});
 
     // Should purchase 200000 tokens into one account
     await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[6]});
 
     await tokenSale.disableSale({from: accounts[0]});
 
-    console.log(await tokenSale.balanceOf(accounts[0]));
-
     const returned = await tokenSale.investorAlloc() - (200000 + 50000 + 50000 + 200000);
 
-    assert.equal(returned, await tokenSale.balanceOf(accounts[0]));
+    assert.equal(returned, await tokenSale.balanceOf(accounts[3]));
 
   })
 
@@ -164,8 +154,8 @@ contract('TokenSale', async (accounts) => {
     // end sale
     await tokenSale.disableSale({from: accounts[0]});
 
-    assert.equal(await tokenSale.balanceOf.call(accounts[1]), 33450000);
-    assert.equal(await tokenSale.balanceOf.call(accounts[2]), 22300000);
+    assert.equal(await tokenSale.balanceOf.call(accounts[1]), 30000000);
+    assert.equal(await tokenSale.balanceOf.call(accounts[2]), 20000000);
   })
 
   it('Only owner can withdraw', async function() {

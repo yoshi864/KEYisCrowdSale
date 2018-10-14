@@ -264,11 +264,11 @@ contract TokenSale is KEYisToken {
 		balances[costsWallet] = balances[costsWallet].add(costsAlloc);
 		emit Transfer(this, costsWallet, costsAlloc);
 
-		// Return any unsold tokens to contract owner
+		// Return any unsold tokens to withdrawal Wallet
 
 		uint256 remaining = investorAlloc.sub(tokensSold[0].add(tokensSold[1]).add(tokensSold[2]));
-		balances[owner] = balances[owner].add(remaining);
-		emit Transfer(this, owner, remaining);
+		balances[withdrawWallet] = balances[withdrawWallet].add(remaining);
+		emit Transfer(this, withdrawWallet, remaining);
 
 		end = now;
 
