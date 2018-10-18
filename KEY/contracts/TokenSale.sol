@@ -21,6 +21,7 @@ contract TokenSale is KEYisToken {
 	uint256[3] stages;
 
 	mapping(address => bool) whitelist;
+	mapping(address => string) promoCode;
 
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
@@ -49,10 +50,12 @@ contract TokenSale is KEYisToken {
 		teamsWallet = owner;
 		costsWallet = owner;
 
-		/* Token allocation numbers:
-		* 150000000 - Investors
-		* 30000000	- Team
-		* 20000000	- Costs
+		/* Token allocation numbers / percentages (assuming 200 mil supply):
+		*  Allocated in this contract only. Bonuses are awarded outside of this contract.
+		*
+		* 150000000 / 75% - Investors
+		* 30000000 / 15%	- Team
+		* 20000000 / 10%	- Costs
 		*/
 
 		investorAlloc = ((totalSupply * 75) / 100) / 1 ether;
@@ -95,7 +98,7 @@ contract TokenSale is KEYisToken {
 	}
 
 	// Get timestamp of tier switch
-	function getStageSwitchTimestamps(uint8 _stage) public view returns(uint256 timestamp) {
+	function getStageSwitchTimestamp(uint8 _stage) public view returns(uint256 timestamp) {
 		return stageSwitchTimeStamps[_stage];
 	}
 
@@ -166,102 +169,75 @@ contract TokenSale is KEYisToken {
 		// Buyer must be on whitelist
 		require(whitelist[msg.sender] == true);
 
-		uint256 quantity = 0;
-		uint8 stage = 0;
+		// Amount must be greater than 0.5
+		require(msg.value >= 0.5 ether);
+
+		uint256 quantity = (msg.value.mul(standardRate)).div(1 ether);
+
+		uint8 tier = 0;
 		uint256 remaining = 0;
 		uint256 leftoverQuantity = 0;
 
-		// If tier is manually set (enabled on discretion, if all tokens in a stage are sold), then calculate rate accordingly
+		// If tier is manually set (enabled on discretion)
 		if (manualTiers) {
-			quantity = (msg.value.mul(standardRate)).div(1 ether);
-			stage = currentTier;
+			tier = currentTier;
 		}
 
 		// Otherwise, we need to check if there are enough tokens remaining in the stage.
 		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
-			quantity = (msg.value.mul(standardRate)).div(1 ether);
-
-			// Logic for case where purchase amount is greater than remaining amount (tiers must switch)
-			if (quantity > tierToLimits[0].sub(tokensSold[0])) {
-				// TODO: Requirements for safety?
-
-				remaining = tierToLimits[0].sub(tokensSold[0]);
-				leftoverQuantity = quantity.sub(remaining);
-
-				// Add remaining tokens to account
-				balances[msg.sender] = balances[msg.sender].add(remaining);
-				balances[address(this)] = balances[address(this)].sub(remaining);
-
-				tokensSold[0] = tokensSold[0].add(remaining);
-
-				// Mark timestamp
-				stageSwitchTimeStamps[0] = now;
-
-				// Purchase from next tier
-				balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
-				balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
-
-				tokensSold[1] = tokensSold[1].add(leftoverQuantity);
-
-				emit Transfer(this, msg.sender, quantity);
-				return;
-			}
+			tier = 0;
 		}
 		// Stage 2;
 		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
-			quantity = (msg.value.mul(standardRate)).div(1 ether);
-
-			if (quantity > tierToLimits[1].sub(tokensSold[1])) {
-				remaining = tierToLimits[1].sub(tokensSold[1]);
-				leftoverQuantity = quantity.sub(remaining);
-
-				// Add remaining tokens to account
-				balances[msg.sender] = balances[msg.sender].add(remaining);
-				balances[address(this)] = balances[address(this)].sub(remaining);
-
-				tokensSold[1] = tokensSold[1].add(remaining);
-
-				// Mark timestamp
-				stageSwitchTimeStamps[1] = now;
-
-				// Purchase from next tier
-				balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
-				balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
-
-				tokensSold[2] = tokensSold[2].add(leftoverQuantity);
-
-				emit Transfer(this, msg.sender, quantity);
-				return;
-			}
-			stage = 1;
+			tier = 1;
 		}
 		// Stage 3;
 		else {
-			quantity = (msg.value.mul(standardRate)).div(1 ether);
-			stage = 2;
+			tier = 2;
 		}
 
-		// Amount must be greater than 0.5
-		require(msg.value >= 0.5 ether);
+		// Logic for case where purchase amount is greater than remaining amount in a tier (tiers must switch)
+		if (quantity > tierToLimits[tier].sub(tokensSold[tier]) && tier != 2) {
+			remaining = tierToLimits[tier].sub(tokensSold[tier]);
+			leftoverQuantity = quantity.sub(remaining);
+
+			// Add remaining tokens to account
+			balances[msg.sender] = balances[msg.sender].add(remaining);
+			balances[address(this)] = balances[address(this)].sub(remaining);
+
+			tokensSold[tier] = tokensSold[tier].add(remaining);
+
+			// Mark timestamp
+			stageSwitchTimeStamps[tier] = now;
+
+			// Purchase from next tier
+			balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
+			balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
+
+			tokensSold[tier + 1] = tokensSold[tier + 1].add(leftoverQuantity);
+
+			emit Transfer(this, msg.sender, quantity);
+			return;
+		}
 
 		// Check if there are enough tokens in current stage to sell
-		require(tierToLimits[stage].sub(tokensSold[stage]) >= quantity);
+		require(tierToLimits[tier].sub(tokensSold[tier]) >= quantity);
 
 		// If the amount to purchase equals the amount remaining, we switch to next tier
-		if (tierToLimits[stage].sub(tokensSold[stage]) == quantity && stage != 2) {
-			stageSwitchTimeStamps[stage] = now;
+		if (tierToLimits[tier].sub(tokensSold[tier]) == quantity && tier != 2) {
+			stageSwitchTimeStamps[tier] = now;
 		}
 
 		balances[msg.sender] = balances[msg.sender].add(quantity);
 		balances[address(this)] = balances[address(this)].sub(quantity);
 
-		tokensSold[stage] = tokensSold[stage].add(quantity);
+		tokensSold[tier] = tokensSold[tier].add(quantity);
 
 		emit Transfer(this, msg.sender, quantity);
 	}
 
 	// Disable sale (CANNOT BE REVERTED)
-	function disableSale() public onlyOwner returns (bool success) {
+	function disableSale() public onlyOwner saleOngoing returns (bool success) {
 		// Transfer investor allocation and costs allocation to wallets
 		enableSale = false;
 
