@@ -21,7 +21,6 @@ contract TokenSale is KEYisToken {
 	uint256[3] stages;
 
 	mapping(address => bool) whitelist;
-	mapping(address => string) promoCode;
 
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
@@ -187,11 +186,11 @@ contract TokenSale is KEYisToken {
 		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
 			tier = 0;
 		}
-		// Stage 2;
+		// Tier 2;
 		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
 			tier = 1;
 		}
-		// Stage 3;
+		// Tier 3;
 		else {
 			tier = 2;
 		}
