@@ -18,7 +18,6 @@ contract TokenSale is KEYisToken {
 	uint256 birth;
 	uint256 end;
 	uint256[2] stageSwitchTimeStamps;
-	uint256[3] stages;
 
 	mapping(address => bool) whitelist;
 
