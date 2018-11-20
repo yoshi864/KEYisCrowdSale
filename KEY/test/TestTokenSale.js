@@ -80,7 +80,7 @@ contract('TokenSale', async (accounts) => {
   })
 
   it('Disable Sale', async function () {
-    await tokenSale.disableSale({from: accounts[0]});
+    await tokenSale.endSale({from: accounts[0]});
     assert.equal(await tokenSale.enableSale(), false, "Sale should be disabled");
 
     // Token purchase should not be possible
@@ -136,8 +136,8 @@ contract('TokenSale', async (accounts) => {
     await await tokenSale.buyTokens({value: web3.toWei(2, 'ether'), from: accounts[5]});
 
     // Block timestamps should be equal
-    assert.equal(await tokenSale.getStageSwitchTimestamps.call(0), switchTimes[0]);
-    assert.equal(await tokenSale.getStageSwitchTimestamps.call(1), switchTimes[1]);
+    assert.equal(await tokenSale.getStageSwitchTimestamp.call(0), switchTimes[0]);
+    assert.equal(await tokenSale.getStageSwitchTimestamp.call(1), switchTimes[1]);
 
   })
 
@@ -158,8 +158,8 @@ contract('TokenSale', async (accounts) => {
     switchTimes[1] = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
     // Block timestamps should be equal
-    assert.equal(await tokenSale.getStageSwitchTimestamps.call(0), switchTimes[0]);
-    assert.equal(await tokenSale.getStageSwitchTimestamps.call(1), switchTimes[1]);
+    assert.equal(await tokenSale.getStageSwitchTimestamp.call(0), switchTimes[0]);
+    assert.equal(await tokenSale.getStageSwitchTimestamp.call(1), switchTimes[1]);
 
   })
 
@@ -189,7 +189,7 @@ contract('TokenSale', async (accounts) => {
     // Should purchase 200000 tokens into one account
     await tokenSale.buyTokens({value: web3.toWei('80', 'ether'), from: accounts[6]});
 
-    await tokenSale.disableSale({from: accounts[0]});
+    await tokenSale.endSale({from: accounts[0]});
 
     const returned = await tokenSale.investorAlloc() - (200000 + 50000 + 50000 + 200000);
 
@@ -203,37 +203,10 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.setCostsWallet(accounts[2], {from: accounts[0]});
 
     // end sale
-    await tokenSale.disableSale({from: accounts[0]});
+    await tokenSale.endSale({from: accounts[0]});
 
     assert.equal(await tokenSale.balanceOf.call(accounts[1]), 30000000);
     assert.equal(await tokenSale.balanceOf.call(accounts[2]), 20000000);
-  })
-
-  it('Only owner can withdraw', async function() {
-    await tokenSale.addToWhitelist(accounts[7], {from: accounts[0]});
-
-    await tokenSale.buyTokens({value: web3.toWei('40', 'ether'), from: accounts[7]});
-
-    await tryCatch(tokenSale.withdrawFunds(web3.toWei('40', 'ether'), {from: accounts[6]}), errTypes.revert);
-  })
-
-  // Test withdrawal function
-
-  it('Withdraw ETH received', async function() {
-    await tokenSale.addToWhitelist(accounts[7], {from: accounts[0]});
-
-    await tokenSale.buyTokens({value: web3.toWei('400', 'ether'), from: accounts[7]});
-
-    // Set withdaw wallet
-    await tokenSale.setWithdrawWallet(accounts[9], {from: accounts[0]});
-
-    const balanceInitial = web3.eth.getBalance(accounts[9]);
-
-    const receipt = await tokenSale.withdrawFunds.sendTransaction(web3.toWei('400', 'ether'), {from: accounts[0]});
-
-    const balanceAfter = web3.eth.getBalance(accounts[9]);
-
-    assert.equal(web3.toWei('400', 'ether'), web3.fromWei(balanceAfter - balanceInitial));
   })
 
   // TODO: Full test case

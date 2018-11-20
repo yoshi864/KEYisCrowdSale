@@ -200,8 +200,7 @@ contract TokenSale is KEYisToken {
 			leftoverQuantity = quantity.sub(remaining);
 
 			// Add remaining tokens to account
-			balances[msg.sender] = balances[msg.sender].add(remaining);
-			balances[address(this)] = balances[address(this)].sub(remaining);
+			this.transfer(msg.sender, remaining);
 
 			tokensSold[tier] = tokensSold[tier].add(remaining);
 
@@ -226,16 +225,17 @@ contract TokenSale is KEYisToken {
 			stageSwitchTimeStamps[tier] = now;
 		}
 
-		balances[msg.sender] = balances[msg.sender].add(quantity);
-		balances[address(this)] = balances[address(this)].sub(quantity);
+		this.transfer(msg.sender, quantity);
 
 		tokensSold[tier] = tokensSold[tier].add(quantity);
+
+		withdrawWallet.transfer(msg.value);
 
 		emit Transfer(this, msg.sender, quantity);
 	}
 
 	// Disable sale (CANNOT BE REVERTED)
-	function disableSale() public onlyOwner saleOngoing returns (bool success) {
+	function endSale() public onlyOwner saleOngoing returns (bool success) {
 		// Transfer investor allocation and costs allocation to wallets
 		enableSale = false;
 
@@ -253,12 +253,6 @@ contract TokenSale is KEYisToken {
 
 		end = now;
 
-		return true;
-	}
-
-	// Withdraw eth in contract
-	function withdrawFunds(uint256 _amount) public onlyOwner returns (bool success) {
-		withdrawWallet.transfer(_amount);
 		return true;
 	}
 }
