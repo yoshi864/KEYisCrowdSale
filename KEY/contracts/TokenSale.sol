@@ -21,6 +21,9 @@ contract TokenSale is KEYisToken {
 
 	mapping(address => bool) whitelist;
 
+	mapping(address => uint256) bonusOwings;
+	mapping(address => uint256) bonusesPaid;
+
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
 
@@ -34,14 +37,16 @@ contract TokenSale is KEYisToken {
 	uint256[3] public tokensSold = [0,0,0];
 
 	// TODO: change to uint8 via mapping?
-	uint256[3] public tierToRates;
+	uint256[3] public tierBonusPercent;
 	uint256[3] public tierToLimits;
+	uint256 public bonusLimits;
 	uint256 public standardRate;
 
 	constructor() public {
 		owner = msg.sender;
 		balances[this] = totalSupply;
 		birth = now;
+		end = 0;
 
 		// Initially set team alloc / costs alloc wallet to owner address
 		withdrawWallet = owner;
@@ -49,7 +54,7 @@ contract TokenSale is KEYisToken {
 		costsWallet = owner;
 
 		/* Token allocation numbers / percentages (assuming 200 mil supply):
-		*  Allocated in this contract only. Bonuses are awarded outside of this contract.
+		*  Allocated in this contract only. Bonuses are awarded via invoked function by investor
 		*
 		* 150000000 / 75% - Investors
 		* 30000000 / 15%	- Team
@@ -60,9 +65,13 @@ contract TokenSale is KEYisToken {
 		teamsAlloc = ((totalSupply * 15) / 100) / 1 ether;
 		costsAlloc = ((totalSupply * 10) / 100) / 1 ether;
 
+
+		// 1 Eth equals...
 		standardRate = 2500;
 
-		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 60) / 100];
+		tierBonusPercent = [30, 20, 0];
+		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 51) / 100];
+		bonusLimits = (investorAlloc * 9) / 100;
 	}
 
 	modifier onlyOwner {
@@ -140,7 +149,7 @@ contract TokenSale is KEYisToken {
 		require(_tier == 1 || _tier == 2);
 		require(_tier > currentTier);
 
-		stageSwitchTimeStamps[_tier - 1] = now;
+		stageSwitchTimeStamps[_tier - 1] = block.timestamp;
 		currentTier = _tier;
 		return true;
 	}
@@ -204,14 +213,18 @@ contract TokenSale is KEYisToken {
 
 			tokensSold[tier] = tokensSold[tier].add(remaining);
 
+			bonusOwings[msg.sender].add(remaining.mul(tierBonusPercent[tier]).div(100));
+
 			// Mark timestamp
-			stageSwitchTimeStamps[tier] = now;
+			stageSwitchTimeStamps[tier] = block.timestamp;
 
 			// Purchase from next tier
 			balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
 			balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
 
 			tokensSold[tier + 1] = tokensSold[tier + 1].add(leftoverQuantity);
+
+			bonusOwings[msg.sender].add(leftoverQuantity.mul(tierBonusPercent[tier + 1]).div(100));
 
 			emit Transfer(this, msg.sender, quantity);
 			return;
@@ -222,16 +235,46 @@ contract TokenSale is KEYisToken {
 
 		// If the amount to purchase equals the amount remaining, we switch to next tier
 		if (tierToLimits[tier].sub(tokensSold[tier]) == quantity && tier != 2) {
-			stageSwitchTimeStamps[tier] = now;
+			stageSwitchTimeStamps[tier] = block.timestamp;
 		}
 
 		this.transfer(msg.sender, quantity);
 
 		tokensSold[tier] = tokensSold[tier].add(quantity);
 
+		bonusOwings[msg.sender].add(quantity.mul(tierBonusPercent[tier]).div(100));
+
 		withdrawWallet.transfer(msg.value);
 
 		emit Transfer(this, msg.sender, quantity);
+	}
+
+	// Withdraw vested bonus owings on (if required) a day by day basis
+	function claimCurrentOwings() public returns (bool success) {
+		require (end != 0);
+		require (bonusOwings[msg.sender].sub(bonusesPaid[msg.sender]) > 0);
+
+		// TODO: OpenZeppelin implementation????
+
+		uint256 dailyRate = bonusOwings[msg.sender].div(365);
+
+		this.transfer(msg.sender, dailyRate);
+
+	}
+
+	// Pause sale (prevent purchase of tokens)
+	function pauseSale() public onlyOwner saleOngoing returns (bool success) {
+		enableSale = false;
+		return true;
+	}
+
+	// Unpause sale (resume purchase of tokens)
+	function unPauseSale() public onlyOwner returns (bool success) {
+		// Safety so that this function can't reenable the sale once it has been ended
+		require(end == 0);
+
+		enableSale = true;
+		return true;
 	}
 
 	// Disable sale (CANNOT BE REVERTED)
@@ -251,7 +294,7 @@ contract TokenSale is KEYisToken {
 		balances[withdrawWallet] = balances[withdrawWallet].add(remaining);
 		emit Transfer(this, withdrawWallet, remaining);
 
-		end = now;
+		end = block.timestamp;
 
 		return true;
 	}

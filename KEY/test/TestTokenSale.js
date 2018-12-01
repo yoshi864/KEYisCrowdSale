@@ -108,8 +108,8 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[2], 'ether'), from: accounts[5]});
 
     // Should now have purchased all tokens
-    assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000);
-    assert.equal(await tokenSale.getTokensSold(), 150000000);
+    assert.equal(await tokenSale.balanceOf(accounts[5]), 136500000);
+    assert.equal(await tokenSale.getTokensSold(), 136500000);
   })
 
   //  Timestamps are correct when switching tiers automatically
