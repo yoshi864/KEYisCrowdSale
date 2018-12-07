@@ -1,5 +1,5 @@
 const TokenSale = artifacts.require("TokenSale");
-const StandardRate = 2500;
+const StandardRate = 2000;
 
 contract('TokenSale', async (accounts) => {
   let tryCatch = require("./exceptions.js").tryCatch;
@@ -40,12 +40,12 @@ contract('TokenSale', async (accounts) => {
     await tryCatch(tokenSale.buyTokens({value: web3.toWei('0.3', 'ether'), from: accounts[1]}), errTypes.revert);
   })
 
-  it('Purchase 2500 Tokens with 1 Ether', async function () {
+  it('Purchase 2000 Tokens with 1 Ether', async function () {
     await tokenSale.addToWhitelist(accounts[5], {from: accounts[0]});
     // Purchase tokens
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
 
-    assert.equal(await tokenSale.balanceOf.call(accounts[5]), StandardRate, "1 ETH should buy 2500 tokens");
+    assert.equal(await tokenSale.balanceOf.call(accounts[5]), StandardRate, "1 ETH should buy 2000 tokens");
   })
 
   it('Purchase tokens with tiers manually changed', async function() {
@@ -69,14 +69,34 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
     const balanceTier3 = await tokenSale.balanceOf.call(accounts[5]);
 
-    assert.equal(balanceTier1, StandardRate, "Tier 0 should have purchased 2500 tokens");
-    assert.equal(balanceTier2, StandardRate * 2, "Tier 1 should have purchased 2500 tokens");
-    assert.equal(balanceTier3, StandardRate * 3, "Tier 2 should have purchased 2500 tokens");
+    assert.equal(balanceTier1, StandardRate, "Tier 0 should have purchased 2000 tokens");
+    assert.equal(balanceTier2, StandardRate * 2, "Tier 1 should have purchased 2000 tokens");
+    assert.equal(balanceTier3, StandardRate * 3, "Tier 2 should have purchased 2000 tokens");
   })
 
   it('Should not be able to change tiers without setting manualTiers', async function () {
     // Expect a revert
     await tryCatch(tokenSale.switchTiers(1, {from: accounts[0]}), errTypes.revert);
+  })
+
+  it('Pause and unpause sale', async function() {
+    await tokenSale.addToWhitelist(accounts[5], {from: accounts[0]});
+    await tokenSale.pauseSale({from: accounts[0]});
+
+    // Attempt to purchase tokens, expect a revert
+    await tryCatch(tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]}), errTypes.revert);
+
+    await tokenSale.unPauseSale({from: accounts[0]});
+
+    // Should now be able to buy tokens
+    await tokenSale.buyTokens({value: web3.toWei('1', 'ether'), from: accounts[5]});
+
+    assert.equal(await tokenSale.balanceOf.call(accounts[5]), StandardRate, "1 ETH should buy 2000 tokens");
+  })
+
+  it('Cannot resume sale once it has ended', async function() {
+    await tokenSale.endSale({from: accounts[0]});
+    await tryCatch(tokenSale.unPauseSale({from: accounts[0]}), errTypes.revert);
   })
 
   it('Disable Sale', async function () {
@@ -96,7 +116,7 @@ contract('TokenSale', async (accounts) => {
       tokenLimit[i] = await tokenSale.getTierLimit.call(i);
     }
 
-    const maxEthTiers = [(tokenLimit[0] / 2500), (tokenLimit[1] / 2500), (tokenLimit[2] / 2500)];
+    const maxEthTiers = [(tokenLimit[0] / StandardRate), (tokenLimit[1] / StandardRate), (tokenLimit[2] / StandardRate)];
 
     // Purchase up to the limit on 1st tier, then try to purchase more
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0], 'ether'), from: accounts[5]});
@@ -108,8 +128,8 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[2], 'ether'), from: accounts[5]});
 
     // Should now have purchased all tokens
-    assert.equal(await tokenSale.balanceOf(accounts[5]), 136500000);
-    assert.equal(await tokenSale.getTokensSold(), 136500000);
+    assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000);
+    assert.equal(await tokenSale.getTokensSold(), 150000000);
   })
 
   //  Timestamps are correct when switching tiers automatically
@@ -123,7 +143,7 @@ contract('TokenSale', async (accounts) => {
       tokenLimit[i] = await tokenSale.getTierLimit.call(i);
     }
 
-    const maxEthTiers = [(tokenLimit[0] / 2500), (tokenLimit[1] / 2500), (tokenLimit[2] / 2500)];
+    const maxEthTiers = [(tokenLimit[0] / StandardRate), (tokenLimit[1] / StandardRate), (tokenLimit[2] / StandardRate)];
 
     // Purchase up to the limit on 1st tier. Then purchase over remaining
     await tokenSale.buyTokens({value: web3.toWei(maxEthTiers[0] - 1, 'ether'), from: accounts[5]});
@@ -191,7 +211,7 @@ contract('TokenSale', async (accounts) => {
 
     await tokenSale.endSale({from: accounts[0]});
 
-    const returned = await tokenSale.investorAlloc() - (200000 + 50000 + 50000 + 200000);
+    const returned = await tokenSale.investorAlloc() - (200 * StandardRate);
 
     assert.equal(returned, await tokenSale.balanceOf(accounts[3]));
 

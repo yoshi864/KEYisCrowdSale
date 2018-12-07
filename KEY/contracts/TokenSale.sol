@@ -21,9 +21,6 @@ contract TokenSale is KEYisToken {
 
 	mapping(address => bool) whitelist;
 
-	mapping(address => uint256) bonusOwings;
-	mapping(address => uint256) bonusesPaid;
-
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
 	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
 
@@ -39,7 +36,6 @@ contract TokenSale is KEYisToken {
 	// TODO: change to uint8 via mapping?
 	uint256[3] public tierBonusPercent;
 	uint256[3] public tierToLimits;
-	uint256 public bonusLimits;
 	uint256 public standardRate;
 
 	constructor() public {
@@ -67,11 +63,9 @@ contract TokenSale is KEYisToken {
 
 
 		// 1 Eth equals...
-		standardRate = 2500;
+		standardRate = 2000;
 
-		tierBonusPercent = [30, 20, 0];
-		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 51) / 100];
-		bonusLimits = (investorAlloc * 9) / 100;
+		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 60) / 100];
 	}
 
 	modifier onlyOwner {
@@ -213,7 +207,6 @@ contract TokenSale is KEYisToken {
 
 			tokensSold[tier] = tokensSold[tier].add(remaining);
 
-			bonusOwings[msg.sender].add(remaining.mul(tierBonusPercent[tier]).div(100));
 
 			// Mark timestamp
 			stageSwitchTimeStamps[tier] = block.timestamp;
@@ -223,8 +216,6 @@ contract TokenSale is KEYisToken {
 			balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
 
 			tokensSold[tier + 1] = tokensSold[tier + 1].add(leftoverQuantity);
-
-			bonusOwings[msg.sender].add(leftoverQuantity.mul(tierBonusPercent[tier + 1]).div(100));
 
 			emit Transfer(this, msg.sender, quantity);
 			return;
@@ -242,24 +233,9 @@ contract TokenSale is KEYisToken {
 
 		tokensSold[tier] = tokensSold[tier].add(quantity);
 
-		bonusOwings[msg.sender].add(quantity.mul(tierBonusPercent[tier]).div(100));
-
 		withdrawWallet.transfer(msg.value);
 
 		emit Transfer(this, msg.sender, quantity);
-	}
-
-	// Withdraw vested bonus owings on (if required) a day by day basis
-	function claimCurrentOwings() public returns (bool success) {
-		require (end != 0);
-		require (bonusOwings[msg.sender].sub(bonusesPaid[msg.sender]) > 0);
-
-		// TODO: OpenZeppelin implementation????
-
-		uint256 dailyRate = bonusOwings[msg.sender].div(365);
-
-		this.transfer(msg.sender, dailyRate);
-
 	}
 
 	// Pause sale (prevent purchase of tokens)
