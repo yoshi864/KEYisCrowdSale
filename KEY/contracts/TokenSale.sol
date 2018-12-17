@@ -33,8 +33,6 @@ contract TokenSale is KEYisToken {
 
 	uint256[3] public tokensSold = [0,0,0];
 
-	// TODO: change to uint8 via mapping?
-	uint256[3] public tierBonusPercent;
 	uint256[3] public tierToLimits;
 	uint256 public standardRate;
 
