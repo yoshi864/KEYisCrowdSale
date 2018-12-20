@@ -229,5 +229,18 @@ contract('TokenSale', async (accounts) => {
     assert.equal(await tokenSale.balanceOf.call(accounts[2]), 20000000);
   })
 
-  // TODO: Full test case
+  it('Tokens can be burnt only by owner', async function () {
+    await tryCatch(tokenSale.burn(accounts[0], 5000, {from: accounts[1]}), errTypes.revert);
+  })
+
+  it('Tokens should burn when burn function called', async function () {
+
+    await tokenSale.addToWhitelist(accounts[6], {from: accounts[0]});
+    await tokenSale.buyTokens({value: web3.toWei('10', 'ether'), from: accounts[6]});
+
+    const initialSupply = await tokenSale.totalSupply();
+    await tokenSale.burn(accounts[6], 20000, {from: accounts[0]});
+
+    assert.equal(await tokenSale.totalSupply(), initialSupply - 20000);
+  })
 })

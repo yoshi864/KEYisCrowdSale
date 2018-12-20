@@ -9,8 +9,6 @@ import "./KEYisToken.sol";
 contract TokenSale is KEYisToken {
 	using SafeMath for uint256;
 
-	address public owner;
-
 	address public withdrawWallet;
 	address public teamsWallet;
 	address public costsWallet;
@@ -37,7 +35,6 @@ contract TokenSale is KEYisToken {
 	uint256 public standardRate;
 
 	constructor() public {
-		owner = msg.sender;
 		balances[this] = totalSupply;
 		birth = now;
 		end = 0;
@@ -64,11 +61,6 @@ contract TokenSale is KEYisToken {
 		standardRate = 2000;
 
 		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 60) / 100];
-	}
-
-	modifier onlyOwner {
-		require(owner == msg.sender);
-		_;
 	}
 
 	modifier saleOngoing {

@@ -28,18 +28,29 @@ library SafeMath {
 contract KEYisToken is EIP20Interface {
 	using SafeMath for uint256;
 
+  address public owner;
+
 	string public constant symbol = 'KEYis';
 	string public constant name = 'KEYis Token';
 	uint8 public constant decimals = 18;
 
 	string public constant version = "KEYis 1.0";
 
-	uint256 public constant totalSupply = 200000000 * 10**uint256(decimals);
+	uint256 public totalSupply = 200000000 * 10**uint256(decimals);
 
 	uint256 private constant MAX_UINT256 = 2**256 - 1;
 
 	mapping (address => uint256) public balances;
 	mapping (address => mapping (address => uint256)) public allowed;
+
+  constructor() public {
+		owner = msg.sender;
+  }
+
+  modifier onlyOwner() {
+    require(msg.sender == owner, "You are not authorised to call this function");
+    _;
+  }
 
 	function transfer(address _to, uint256 _value) public returns (bool success) {
 				require(balances[msg.sender] >= _value);
@@ -74,4 +85,12 @@ contract KEYisToken is EIP20Interface {
 	function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
 				return allowed[_owner][_spender];
 	}
+
+  function burn(address _member, uint256 _value) public onlyOwner returns (bool success) {
+    require (balances[_member] >= _value, "Not enough tokens in account to burn");
+    balances[_member] = balances[_member].sub(_value);
+    totalSupply = totalSupply.sub(_value);
+    emit Transfer(_member, 0x0, _value);
+    return true;
+  }
 }
