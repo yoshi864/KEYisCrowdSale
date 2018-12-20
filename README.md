@@ -13,13 +13,14 @@ Has the following functionality and attributes:
 3. The ether sent when purchasing tokens is immediately withdrawn to the withdrawWallet address (initially the owner address)
 4. The owner address can be changed to a non-zero address by the owner.
 5. The withdrawWallet, teamsWallet, and costsWallet addresses can be changed to a non-zero address by the owner.
-6. The allocation of tokens available for Sale to investors comprises of 75% of the total supply. 15% is allocated to the team and the remaining 10% is allocated to costs. 
+6. The allocation of tokens available for Sale to investors comprises of 75% of the total supply. 15% is allocated to the team and the remaining 10% is allocated to costs.
 7. The contract has three tiers of sale, with 10% of investor allocation available in the first tier, 30% in the next and 60% in the third and final tier.
 8. These tiers change automatically once their limits are reached and switching is timestamped so that vested bonuses can be calculated after the end of the Sale.
 9. The Sale can also be moved to the next tier manually using the enableManualTiers and switchTiers functions.
-10. The rate for ether/KEYis is constant throughout the Sale (1 ETH = 2000 KEYis) however the earlier the tier in which the tokens were purchased, the better the vested bonus. 
+10. The rate for ether/KEYis is constant throughout the Sale (1 ETH = 2000 KEYis) however the earlier the tier in which the tokens were purchased, the better the vested bonus.
 11. The Sale can be paused and unpaused (preventing the Sale of any tokens while paused) if the Sale has not ended.
 12. The Sale can be finalised at any time using the endSale function, and cannot be re-opened.
+13. Tokens can be burnt using the burn() function.
 
 ## Deployment and Testing
 
