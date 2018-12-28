@@ -2,7 +2,7 @@
  * Simple ERC20 Contract, what the KEY Token MAY look like
  */
 
-pragma solidity ^0.4.23;
+pragma solidity 0.5.0;
 
 import "./EIP20Interface.sol";
 
@@ -90,7 +90,7 @@ contract KEYisToken is EIP20Interface {
     require (balances[_member] >= _value, "Not enough tokens in account to burn");
     balances[_member] = balances[_member].sub(_value);
     totalSupply = totalSupply.sub(_value);
-    emit Transfer(_member, 0x0, _value);
+    emit Transfer(_member, address(0x0), _value);
     return true;
   }
 }

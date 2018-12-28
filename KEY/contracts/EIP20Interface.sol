@@ -1,7 +1,7 @@
 // Abstract for ERC20 Token Standard
 // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 
-pragma solidity ^0.4.23;
+pragma solidity 0.5.0;
 
 contract EIP20Interface {
 	uint256 public totalSupply;

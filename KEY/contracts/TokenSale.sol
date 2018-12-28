@@ -2,14 +2,16 @@
  * KEY Token Sale Smart Contract
  */
 
-pragma solidity ^0.4.23;
+pragma solidity 0.5.0;
 
 import "./KEYisToken.sol";
 
 contract TokenSale is KEYisToken {
 	using SafeMath for uint256;
 
-	address public withdrawWallet;
+	address payable public owner;
+
+	address payable public withdrawWallet;
 	address public teamsWallet;
 	address public costsWallet;
 
@@ -35,7 +37,8 @@ contract TokenSale is KEYisToken {
 	uint256 public standardRate;
 
 	constructor() public {
-		balances[this] = totalSupply;
+		owner = msg.sender;
+		balances[address(this)] = totalSupply;
 		birth = now;
 		end = 0;
 
@@ -94,14 +97,14 @@ contract TokenSale is KEYisToken {
 	}
 
 	// Set a new owner
-	function setOwner(address _newOwnerAddress) public onlyOwner returns (bool success) {
+	function setOwner(address payable _newOwnerAddress) public onlyOwner returns (bool success) {
 		require (_newOwnerAddress != address(0));
 		owner = _newOwnerAddress;
 		return true;
 	}
 
 	// Set a new address for withdrawal
-	function setWithdrawWallet(address _newWithdrawWallet) public onlyOwner returns (bool success) {
+	function setWithdrawWallet(address payable _newWithdrawWallet) public onlyOwner returns (bool success) {
 		require (_newWithdrawWallet != address(0));
 		withdrawWallet = _newWithdrawWallet;
 		return true;
@@ -151,7 +154,7 @@ contract TokenSale is KEYisToken {
 	}
 
 	// Default function - Revert any direct ETH payments
-	function () public payable {
+	function () external payable {
 		revert();
 	}
 
@@ -207,7 +210,7 @@ contract TokenSale is KEYisToken {
 
 			tokensSold[tier + 1] = tokensSold[tier + 1].add(leftoverQuantity);
 
-			emit Transfer(this, msg.sender, quantity);
+			emit Transfer(address(this), msg.sender, quantity);
 			return;
 		}
 
@@ -224,8 +227,6 @@ contract TokenSale is KEYisToken {
 		tokensSold[tier] = tokensSold[tier].add(quantity);
 
 		withdrawWallet.transfer(msg.value);
-
-		emit Transfer(this, msg.sender, quantity);
 	}
 
 	// Pause sale (prevent purchase of tokens)
@@ -249,16 +250,16 @@ contract TokenSale is KEYisToken {
 		enableSale = false;
 
 		balances[teamsWallet] = balances[teamsWallet].add(teamsAlloc);
-		emit Transfer(this, teamsWallet, teamsAlloc);
+		emit Transfer(address(this), teamsWallet, teamsAlloc);
 
 		balances[costsWallet] = balances[costsWallet].add(costsAlloc);
-		emit Transfer(this, costsWallet, costsAlloc);
+		emit Transfer(address(this), costsWallet, costsAlloc);
 
 		// Return any unsold tokens to withdrawal Wallet
 
 		uint256 remaining = investorAlloc.sub(tokensSold[0].add(tokensSold[1]).add(tokensSold[2]));
 		balances[withdrawWallet] = balances[withdrawWallet].add(remaining);
-		emit Transfer(this, withdrawWallet, remaining);
+		emit Transfer(address(this), withdrawWallet, remaining);
 
 		end = block.timestamp;
 

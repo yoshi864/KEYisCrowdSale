@@ -34,4 +34,4 @@ To deploy the contract and running the included tests using the Truffle Framewor
 4. Run `truffle compile`
 5. Run `truffle migrate`
 6. The contract is now live on the Ganache RPC, and can be interacted with using any address listed on the Ganache client.
-7. To run tests, run `truffle test`. Please note that the two timestamp based tests occasionally fail due to internal js timing issues, this can be ignored.
+7. To run tests, run `truffle test`.
