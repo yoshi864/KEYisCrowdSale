@@ -1,5 +1,5 @@
 const TokenSale = artifacts.require("TokenSale");
-const StandardRate = 2000;
+const StandardRate = 2000000000000000000000;
 
 contract('TokenSale', async (accounts) => {
   let tryCatch = require("./exceptions.js").tryCatch;
@@ -128,7 +128,7 @@ contract('TokenSale', async (accounts) => {
     await tokenSale.buyTokens({value: web3.utils.toWei(web3.utils.toBN(maxEthTiers[2]), 'ether'), from: accounts[5]});
 
     // Should now have purchased all tokens
-    assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000);
+    assert.equal(await tokenSale.balanceOf(accounts[5]), 150000000 * 10**18);
     assert.equal(await tokenSale.getTokensSold(), 150000000);
   })
 
@@ -226,8 +226,8 @@ contract('TokenSale', async (accounts) => {
     // end sale
     await tokenSale.endSale({from: accounts[0]});
 
-    assert.equal(await tokenSale.balanceOf.call(accounts[1]), 30000000);
-    assert.equal(await tokenSale.balanceOf.call(accounts[2]), 20000000);
+    assert.equal(await tokenSale.balanceOf.call(accounts[1]), 30000000 * 10**18);
+    assert.equal(await tokenSale.balanceOf.call(accounts[2]), 20000000 * 10**18);
   })
 
   it('Tokens can be burnt only by owner', async function () {

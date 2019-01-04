@@ -77,6 +77,7 @@ contract KEYisToken is EIP20Interface {
 	}
 
 	function approve(address _spender, uint256 _value) public returns (bool success) {
+        require(_value > 0);
 				allowed[msg.sender][_spender] = _value;
 				emit Approval(msg.sender, _spender, _value);
 				return true;

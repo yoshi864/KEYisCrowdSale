@@ -55,13 +55,13 @@ contract TokenSale is KEYisToken {
 		* 20000000 / 10%	- Costs
 		*/
 
-		investorAlloc = ((totalSupply * 75) / 100) / 1 ether;
-		teamsAlloc = ((totalSupply * 15) / 100) / 1 ether;
-		costsAlloc = ((totalSupply * 10) / 100) / 1 ether;
+		investorAlloc = ((totalSupply * 75) / 100);
+		teamsAlloc = ((totalSupply * 15) / 100);
+		costsAlloc = ((totalSupply * 10) / 100);
 
 
 		// 1 Eth equals...
-		standardRate = 2000;
+		standardRate = 2000 * 1 ether;
 
 		tierToLimits = [(investorAlloc * 10) / 100, (investorAlloc * 30) / 100, (investorAlloc * 60) / 100];
 	}
@@ -83,7 +83,7 @@ contract TokenSale is KEYisToken {
 
 	// Get total amount tokens  purchased
 	function getTokensSold() public view returns (uint256 total) {
-		return tokensSold[0] + tokensSold[1] + tokensSold[2];
+		return (tokensSold[0] + tokensSold[1] + tokensSold[2]) / 1 ether;
 	}
 
 	// Get limits for each tier
@@ -98,28 +98,28 @@ contract TokenSale is KEYisToken {
 
 	// Set a new owner
 	function setOwner(address payable _newOwnerAddress) public onlyOwner returns (bool success) {
-		require (_newOwnerAddress != address(0));
+		require (_newOwnerAddress != address(0x0));
 		owner = _newOwnerAddress;
 		return true;
 	}
 
 	// Set a new address for withdrawal
 	function setWithdrawWallet(address payable _newWithdrawWallet) public onlyOwner returns (bool success) {
-		require (_newWithdrawWallet != address(0));
+		require (_newWithdrawWallet != address(0x0));
 		withdrawWallet = _newWithdrawWallet;
 		return true;
 	}
 
 	// Set a new address for costs allocation
 	function setCostsWallet(address _newCostsWallet) public onlyOwner returns (bool success) {
-		require (_newCostsWallet != address(0));
+		require (_newCostsWallet != address(0x0));
 		costsWallet = _newCostsWallet;
 		return true;
 	}
 
 	// Set a new address for teams allocation
 	function setTeamsWallet(address _newTeamsWallet) public onlyOwner returns (bool success) {
-		require (_newTeamsWallet != address(0));
+		require (_newTeamsWallet != address(0x0));
 		teamsWallet = _newTeamsWallet;
 		return true;
 	}
@@ -155,7 +155,7 @@ contract TokenSale is KEYisToken {
 
 	// Default function - Revert any direct ETH payments
 	function () external payable {
-		revert();
+		buyTokens();
 	}
 
 	// Token purchase function. Tokens can ONLY be purchase using this method
@@ -222,10 +222,9 @@ contract TokenSale is KEYisToken {
 			stageSwitchTimeStamps[tier] = block.timestamp;
 		}
 
-		this.transfer(msg.sender, quantity);
-
 		tokensSold[tier] = tokensSold[tier].add(quantity);
 
+		this.transfer(msg.sender, quantity);
 		withdrawWallet.transfer(msg.value);
 	}
 

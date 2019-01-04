@@ -30,7 +30,7 @@ To deploy the contract and running the included tests using the Truffle Framewor
 
 1. Install the Truffle Framework and Ganache for your relevant platform.
 2. Increase the default amount of ether in each account to 10 Million.
-3. Navigate to the `KEYCrowdSale/Key` directory within the cloned repository with your prefered terminal emulator.
+3. Navigate to the `KEYCrowdSale/Key` directory within the cloned repository with your preferred terminal emulator.
 4. Run `truffle compile`
 5. Run `truffle migrate`
 6. The contract is now live on the Ganache RPC, and can be interacted with using any address listed on the Ganache client.
