@@ -22,7 +22,7 @@ contract TokenSale is KEYisToken {
 	mapping(address => bool) whitelist;
 
 	bool public manualTiers = false; // Whether tiers are manually set (i.e. not time based)
-	uint8 public currentTier = 0; // Current Pricing Tier. Only used when tiers are manually set
+	uint256 public currentTier; // Current Pricing Tier
 
 	bool public enableSale = true;
 
@@ -41,6 +41,8 @@ contract TokenSale is KEYisToken {
 		balances[address(this)] = totalSupply;
 		birth = now;
 		end = 0;
+
+		currentTier = 0;
 
 		// Initially set team alloc / costs alloc wallet to owner address
 		withdrawWallet = owner;
@@ -84,6 +86,11 @@ contract TokenSale is KEYisToken {
 	// Get total amount tokens  purchased
 	function getTokensSold() public view returns (uint256 total) {
 		return (tokensSold[0] + tokensSold[1] + tokensSold[2]) / 1 ether;
+	}
+
+	// Get current tier of sale
+	function getCurrentTier() public view returns (uint256 tier) {
+		return currentTier;
 	}
 
 	// Get limits for each tier
@@ -168,64 +175,61 @@ contract TokenSale is KEYisToken {
 
 		uint256 quantity = (msg.value.mul(standardRate)).div(1 ether);
 
-		uint8 tier = 0;
 		uint256 remaining = 0;
 		uint256 leftoverQuantity = 0;
 
-		// If tier is manually set (enabled on discretion)
-		if (manualTiers) {
-			tier = currentTier;
-		}
-
-		// Otherwise, we need to check if there are enough tokens remaining in the stage.
-		else if (tierToLimits[0].sub(tokensSold[0]) > 0) {
-			tier = 0;
-		}
-		// Tier 2;
-		else if (tierToLimits[1].sub(tokensSold[1]) > 0) {
-			tier = 1;
-		}
-		// Tier 3;
-		else {
-			tier = 2;
-		}
 
 		// Logic for case where purchase amount is greater than remaining amount in a tier (tiers must switch)
-		if (quantity > tierToLimits[tier].sub(tokensSold[tier]) && tier != 2) {
-			remaining = tierToLimits[tier].sub(tokensSold[tier]);
+		if (quantity > tierToLimits[currentTier].sub(tokensSold[currentTier]) && currentTier != 2) {
+			remaining = tierToLimits[currentTier].sub(tokensSold[currentTier]);
 			leftoverQuantity = quantity.sub(remaining);
 
-			// Add remaining tokens to account
-			this.transfer(msg.sender, remaining);
+			// Require next tier to have enough tokens for the sale
+			require(tierToLimits[currentTier].sub(tokensSold[currentTier]) >= leftoverQuantity, "Not enough tokens in next tier to sell");
 
-			tokensSold[tier] = tokensSold[tier].add(remaining);
-
+			tokensSold[currentTier] = tokensSold[currentTier].add(remaining);
 
 			// Mark timestamp
-			stageSwitchTimeStamps[tier] = block.timestamp;
+			stageSwitchTimeStamps[currentTier] = block.timestamp;
+
+			currentTier = currentTier.add(1);
 
 			// Purchase from next tier
 			balances[msg.sender] = balances[msg.sender].add(leftoverQuantity);
 			balances[address(this)] = balances[address(this)].sub(leftoverQuantity);
 
-			tokensSold[tier + 1] = tokensSold[tier + 1].add(leftoverQuantity);
+			tokensSold[currentTier] = tokensSold[currentTier].add(leftoverQuantity);
 
-			emit Transfer(address(this), msg.sender, quantity);
+			require(tierToLimits[currentTier] >= tokensSold[currentTier]);
+
+			withdrawWallet.transfer(msg.value);
+			this.transfer(msg.sender, leftoverQuantity + remaining);
+
 			return;
 		}
 
 		// Check if there are enough tokens in current stage to sell
-		require(tierToLimits[tier].sub(tokensSold[tier]) >= quantity);
+		require(tierToLimits[currentTier].sub(tokensSold[currentTier]) >= quantity, "Not enough tokens in current tier to sell");
 
 		// If the amount to purchase equals the amount remaining, we switch to next tier
-		if (tierToLimits[tier].sub(tokensSold[tier]) == quantity && tier != 2) {
-			stageSwitchTimeStamps[tier] = block.timestamp;
+		if (tierToLimits[currentTier].sub(tokensSold[currentTier]) == quantity && currentTier != 2) {
+			stageSwitchTimeStamps[currentTier] = block.timestamp;
+			tokensSold[currentTier] = tokensSold[currentTier].add(quantity);
+
+			require(tierToLimits[currentTier] >= tokensSold[currentTier]);
+
+			currentTier = currentTier.add(1);
+
+			withdrawWallet.transfer(msg.value);
+			this.transfer(msg.sender, quantity);
+
+			return;
 		}
 
-		tokensSold[tier] = tokensSold[tier].add(quantity);
+		tokensSold[currentTier] = tokensSold[currentTier].add(quantity);
 
-		this.transfer(msg.sender, quantity);
 		withdrawWallet.transfer(msg.value);
+		this.transfer(msg.sender, quantity);
 	}
 
 	// Pause sale (prevent purchase of tokens)
